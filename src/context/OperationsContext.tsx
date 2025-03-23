@@ -37,11 +37,11 @@ interface OperationsProviderProps {
 
 export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children }) => {
   const [operations, setOperations] = useState<Operation[]>(() => {
-    // Próba wczytania operacji z localStorage przy inicjalizacji
+    // Load operations from localStorage during initialization
     const savedOperations = localStorage.getItem(STORAGE_KEY);
     if (savedOperations) {
       try {
-        // Konwersja dat z powrotem na obiekty Date
+        // Convert dates back to Date objects
         const parsed = JSON.parse(savedOperations);
         return parsed.map((op: any) => ({
           ...op,
@@ -50,14 +50,14 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
           createdAt: new Date(op.createdAt)
         }));
       } catch (error) {
-        console.error('Błąd podczas parsowania zapisanych operacji:', error);
+        console.error('Error parsing saved operations:', error);
         return [];
       }
     }
     return [];
   });
 
-  // Zapisuj operacje w localStorage przy każdej zmianie
+  // Save operations to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(operations));
   }, [operations]);
@@ -69,7 +69,11 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
       createdAt: new Date(),
     };
     
-    setOperations([...operations, newOperation]);
+    setOperations(prevOperations => {
+      const updatedOperations = [...prevOperations, newOperation];
+      return updatedOperations;
+    });
+    
     toast.success("Operacja została dodana", {
       description: `${operation.employee} wykonał(a) ${operation.quantity} sztuk na maszynie ${operation.machine}`,
     });
