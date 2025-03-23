@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BarChart2, SortAsc, SortDesc } from 'lucide-react';
+import { ArrowLeft, BarChart2, SortAsc, SortDesc, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useOperations, Operation } from '@/context/OperationsContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -17,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OperationsStats from '@/components/OperationsStats';
 
-type SortField = 'employee' | 'machine' | 'startTime' | 'endTime' | 'quantity';
+type SortField = 'employee' | 'machine' | 'project' | 'startTime' | 'endTime' | 'quantity';
 type SortOrder = 'asc' | 'desc';
 
 const History = () => {
@@ -26,6 +27,7 @@ const History = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [employeeFilter, setEmployeeFilter] = useState<string>('all');
   const [machineFilter, setMachineFilter] = useState<string>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('');
 
   const uniqueEmployees = useMemo(() => {
     const employees = operations.map(op => op.employee);
@@ -37,10 +39,16 @@ const History = () => {
     return ['all', ...Array.from(new Set(machines))];
   }, [operations]);
 
+  const uniqueProjects = useMemo(() => {
+    const projects = operations.map(op => op.project).filter(Boolean);
+    return Array.from(new Set(projects));
+  }, [operations]);
+
   const sortedAndFilteredOperations = useMemo(() => {
     return [...operations]
       .filter(op => employeeFilter === 'all' || op.employee === employeeFilter)
       .filter(op => machineFilter === 'all' || op.machine === machineFilter)
+      .filter(op => !projectFilter || (op.project && op.project.toLowerCase().includes(projectFilter.toLowerCase())))
       .sort((a, b) => {
         let comparison = 0;
         
@@ -48,6 +56,8 @@ const History = () => {
           comparison = a.employee.localeCompare(b.employee);
         } else if (sortField === 'machine') {
           comparison = a.machine.localeCompare(b.machine);
+        } else if (sortField === 'project') {
+          comparison = (a.project || '').localeCompare(b.project || '');
         } else if (sortField === 'startTime') {
           comparison = a.startTime.getTime() - b.startTime.getTime();
         } else if (sortField === 'endTime') {
@@ -58,7 +68,7 @@ const History = () => {
         
         return sortOrder === 'asc' ? comparison : -comparison;
       });
-  }, [operations, sortField, sortOrder, employeeFilter, machineFilter]);
+  }, [operations, sortField, sortOrder, employeeFilter, machineFilter, projectFilter]);
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
@@ -118,7 +128,7 @@ const History = () => {
           </TabsList>
           
           <TabsContent value="history" className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-wrap">
               <div>
                 <label htmlFor="employeeFilter" className="text-sm font-medium block mb-1">
                   Pracownik
@@ -154,6 +164,22 @@ const History = () => {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label htmlFor="projectFilter" className="text-sm font-medium block mb-1">
+                  Projekt
+                </label>
+                <div className="relative max-w-[250px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="projectFilter"
+                    value={projectFilter}
+                    onChange={(e) => setProjectFilter(e.target.value)}
+                    placeholder="Wyszukaj projekt..."
+                    className="pl-10 focus:ring-2 focus:ring-primary/25"
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="rounded-md border shadow-sm bg-white">
@@ -175,6 +201,15 @@ const History = () => {
                     >
                       <div className="flex items-center">
                         Maszyna {renderSortIcon('machine')}
+                      </div>
+                    </TableHead>
+
+                    <TableHead 
+                      className="w-[150px] cursor-pointer"
+                      onClick={() => handleSort('project')}
+                    >
+                      <div className="flex items-center">
+                        Projekt {renderSortIcon('project')}
                       </div>
                     </TableHead>
                     
@@ -212,7 +247,7 @@ const History = () => {
                 <TableBody>
                   {sortedAndFilteredOperations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
                         Brak zarejestrowanych operacji
                       </TableCell>
                     </TableRow>
@@ -221,6 +256,7 @@ const History = () => {
                       <TableRow key={operation.id}>
                         <TableCell className="font-medium">{operation.employee}</TableCell>
                         <TableCell>{operation.machine}</TableCell>
+                        <TableCell>{operation.project || '-'}</TableCell>
                         <TableCell>{formatDateTime(operation.startTime)}</TableCell>
                         <TableCell>{formatDateTime(operation.endTime)}</TableCell>
                         <TableCell>{calculateDuration(operation.startTime, operation.endTime)}</TableCell>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useOperations } from '@/context/OperationsContext';
 import { Button } from "@/components/ui/button";
@@ -89,6 +88,7 @@ const OperationForm: React.FC = () => {
         addOperation({
           employee: formData.employee,
           machine: formData.machine,
+          project: formData.project,
           startTime: formData.startTime,
           endTime: formData.endTime,
           quantity: formData.quantity,
