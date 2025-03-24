@@ -16,7 +16,7 @@ import { useOperations } from '@/context/OperationsContext';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 
-interface MachineSelectProps {
+interface OperationSelectProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -35,7 +35,7 @@ const getIconComponent = (iconName?: string) => {
   }
 };
 
-const MachineSelect: React.FC<MachineSelectProps> = ({ value, onChange, className }) => {
+const OperationSelect: React.FC<OperationSelectProps> = ({ value, onChange, className }) => {
   const { machines } = useOperations();
   const navigate = useNavigate();
 
@@ -45,20 +45,20 @@ const MachineSelect: React.FC<MachineSelectProps> = ({ value, onChange, classNam
 
   return (
     <FormField
-      label="Maszyna"
+      label="Operacja"
       htmlFor="machine"
       className={className}
     >
       <div className="relative">
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger id="machine" className="w-full focus:ring-2 focus:ring-primary/25">
-            <SelectValue placeholder="Wybierz maszynę" />
+            <SelectValue placeholder="Wybierz operację" />
           </SelectTrigger>
           <SelectContent className="bg-white/95 backdrop-blur-sm border border-border/50">
             <SelectGroup>
               <div className="flex items-center justify-between px-2 py-1.5">
                 <SelectLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <span>Dostępne maszyny</span>
+                  <span>Dostępne operacje</span>
                 </SelectLabel>
                 <Button variant="ghost" size="icon" onClick={handleManage} className="h-6 w-6">
                   <Settings size={14} className="text-muted-foreground" />
@@ -87,4 +87,4 @@ const MachineSelect: React.FC<MachineSelectProps> = ({ value, onChange, classNam
   );
 };
 
-export default MachineSelect;
+export default OperationSelect;

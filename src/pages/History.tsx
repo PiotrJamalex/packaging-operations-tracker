@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, Package, Trash2, User } from "lucide-react";
+import { ArrowLeft, Download, FileText, Package, Trash2, User, Calendar, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useOperations } from "@/context/OperationsContext";
 import {
@@ -22,54 +22,103 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { utils, writeFile } from 'xlsx';
 import { useState } from "react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const History = () => {
   const { operations, clearOperations, employees, machines } = useOperations();
   const [projectFilter, setProjectFilter] = useState("");
+  const [employeeFilter, setEmployeeFilter] = useState("");
+  const [machineFilter, setMachineFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState<Date | undefined>(undefined);
 
-  // Pobierz nazwy pracowników na podstawie ID
+  // Get employee names by ID
   const getEmployeeName = (employeeId: string) => {
     const employee = employees.find(emp => emp.id === employeeId);
     return employee ? employee.name : employeeId;
   };
 
-  // Pobierz nazwy maszyn na podstawie ID
+  // Get machine names by ID
   const getMachineName = (machineId: string) => {
     const machine = machines.find(m => m.id === machineId);
     return machine ? machine.name : machineId;
   };
 
-  // Filtrowanie operacji na podstawie projektu
-  const filteredOperations = projectFilter
-    ? operations.filter(op => 
-        op.project?.toLowerCase().includes(projectFilter.toLowerCase())
-      )
-    : operations;
+  // Filter operations based on all filters
+  const filteredOperations = operations.filter(op => {
+    // Project filter
+    if (projectFilter && !op.project?.toLowerCase().includes(projectFilter.toLowerCase())) {
+      return false;
+    }
+    
+    // Employee filter
+    if (employeeFilter && op.employee !== employeeFilter) {
+      return false;
+    }
+    
+    // Machine filter
+    if (machineFilter && op.machine !== machineFilter) {
+      return false;
+    }
+    
+    // End date filter
+    if (endDateFilter) {
+      const opEndDate = new Date(op.endTime);
+      if (
+        opEndDate.getDate() !== endDateFilter.getDate() ||
+        opEndDate.getMonth() !== endDateFilter.getMonth() ||
+        opEndDate.getFullYear() !== endDateFilter.getFullYear()
+      ) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
 
-  // Sortowanie operacji - najnowsze pierwsze
+  // Sort operations - newest first
   const sortedOperations = [...filteredOperations].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  // Eksport do Excela
+  // Reset all filters
+  const resetFilters = () => {
+    setProjectFilter("");
+    setEmployeeFilter("");
+    setMachineFilter("");
+    setEndDateFilter(undefined);
+  };
+
+  // Export to Excel
   const handleExport = () => {
-    // Przygotuj dane do eksportu
+    // Prepare data for export
     const exportData = sortedOperations.map(op => ({
       "Data utworzenia": format(new Date(op.createdAt), 'dd.MM.yyyy HH:mm', { locale: pl }),
       "Pracownik": getEmployeeName(op.employee),
-      "Maszyna": getMachineName(op.machine),
+      "Operacja": getMachineName(op.machine),
       "Projekt": op.project || "",
       "Data rozpoczęcia": format(new Date(op.startTime), 'dd.MM.yyyy HH:mm', { locale: pl }),
       "Data zakończenia": format(new Date(op.endTime), 'dd.MM.yyyy HH:mm', { locale: pl }),
       "Ilość": op.quantity
     }));
 
-    // Utwórz arkusz
+    // Create spreadsheet
     const ws = utils.json_to_sheet(exportData);
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "Operacje");
 
-    // Zapisz plik
+    // Save file
     writeFile(wb, "operacje_produkcyjne.xlsx");
   };
 
@@ -135,7 +184,7 @@ const History = () => {
           <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
             <CardTitle className="flex items-center justify-between">
               <span className="text-lg font-medium tracking-tight flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
+                <Filter className="h-4 w-4 text-primary" />
                 <span>Filtrowanie</span>
               </span>
               <span className="text-sm text-muted-foreground">
@@ -145,19 +194,99 @@ const History = () => {
           </CardHeader>
           <CardContent className="pt-4">
             <div className="flex flex-col space-y-4">
-              <div>
-                <Label htmlFor="projectFilter">Filtruj po nazwie projektu</Label>
-                <div className="relative mt-1.5">
-                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="projectFilter"
-                    value={projectFilter}
-                    onChange={(e) => setProjectFilter(e.target.value)}
-                    className="pl-10"
-                    placeholder="Wpisz nazwę projektu..."
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="projectFilter">Filtruj po nazwie projektu</Label>
+                  <div className="relative mt-1.5">
+                    <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="projectFilter"
+                      value={projectFilter}
+                      onChange={(e) => setProjectFilter(e.target.value)}
+                      className="pl-10"
+                      placeholder="Wpisz nazwę projektu..."
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="employeeFilter">Filtruj po pracowniku</Label>
+                  <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                    <SelectTrigger id="employeeFilter" className="mt-1.5">
+                      <SelectValue placeholder="Wszyscy pracownicy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Wszyscy pracownicy</SelectItem>
+                      {employees.map(employee => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="machineFilter">Filtruj po operacji</Label>
+                  <Select value={machineFilter} onValueChange={setMachineFilter}>
+                    <SelectTrigger id="machineFilter" className="mt-1.5">
+                      <SelectValue placeholder="Wszystkie operacje" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Wszystkie operacje</SelectItem>
+                      {machines.map(machine => (
+                        <SelectItem key={machine.id} value={machine.id}>
+                          {machine.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Filtruj po dacie zakończenia</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-1.5 justify-start text-left font-normal"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {endDateFilter ? (
+                          format(endDateFilter, 'dd.MM.yyyy', { locale: pl })
+                        ) : (
+                          <span>Wybierz datę</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDateFilter}
+                        onSelect={setEndDateFilter}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              
+              {(projectFilter || employeeFilter || machineFilter || endDateFilter) && (
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="gap-1"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Wyczyść filtry</span>
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -188,9 +317,9 @@ const History = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setProjectFilter("")}
+                  onClick={resetFilters}
                 >
-                  <span>Wyczyść filtr</span>
+                  <span>Wyczyść filtry</span>
                 </Button>
               </div>
             ) : (
@@ -200,7 +329,7 @@ const History = () => {
                     <TableRow>
                       <TableHead className="w-[130px]">Data</TableHead>
                       <TableHead className="w-[100px]">Pracownik</TableHead>
-                      <TableHead className="w-[100px]">Maszyna</TableHead>
+                      <TableHead className="w-[100px]">Operacja</TableHead>
                       <TableHead>Projekt</TableHead>
                       <TableHead className="w-[120px]">Czas rozpoczęcia</TableHead>
                       <TableHead className="w-[120px]">Czas zakończenia</TableHead>

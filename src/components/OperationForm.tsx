@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Clock, RotateCcw, CheckCircle2 } from "lucide-react";
 import EmployeeSelect from './EmployeeSelect';
-import MachineSelect from './MachineSelect';
+import OperationSelect from './OperationSelect';
 import DateTimeField from './DateTimeField';
 import ProductionCounter from './ProductionCounter';
 import ProjectSelect from './ProjectSelect';
@@ -15,12 +15,16 @@ import ProjectSelect from './ProjectSelect';
 const OperationForm: React.FC = () => {
   const { addOperation } = useOperations();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Set default start and end time to today's date
+  const today = new Date();
+  
   const [formData, setFormData] = useState({
     employee: "",
     machine: "",
     project: "",
-    startTime: undefined as Date | undefined,
-    endTime: undefined as Date | undefined,
+    startTime: today,
+    endTime: today,
     quantity: 0,
   });
   
@@ -93,8 +97,8 @@ const OperationForm: React.FC = () => {
           employee: "",
           machine: "",
           project: "",
-          startTime: undefined,
-          endTime: undefined,
+          startTime: today,
+          endTime: today,
           quantity: 0,
         });
         
@@ -115,8 +119,8 @@ const OperationForm: React.FC = () => {
       employee: "",
       machine: "",
       project: "",
-      startTime: undefined,
-      endTime: undefined,
+      startTime: today,
+      endTime: today,
       quantity: 0,
     });
     setErrors({});
@@ -145,7 +149,7 @@ const OperationForm: React.FC = () => {
               className={errors.employee ? "border-destructive" : ""}
             />
             
-            <MachineSelect 
+            <OperationSelect 
               value={formData.machine}
               onChange={(value) => {
                 setFormData({...formData, machine: value});

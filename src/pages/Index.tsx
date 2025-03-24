@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { History, Settings, User, Package, FileText } from 'lucide-react';
+import { History, Settings, User, Package, FileText, BarChart } from 'lucide-react';
 import OperationForm from '@/components/OperationForm';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +30,13 @@ const Index = () => {
                 </Link>
               </Button>
               
+              <Button asChild variant="outline" className="mr-2" size="sm">
+                <Link to="/analiza">
+                  <BarChart className="mr-2 h-4 w-4" />
+                  Analiza
+                </Link>
+              </Button>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -49,7 +56,7 @@ const Index = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/zarzadzanie/maszyny" className="w-full flex items-center cursor-pointer">
                       <Package className="mr-2 h-4 w-4" />
-                      <span>Maszyny</span>
+                      <span>Operacje</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
