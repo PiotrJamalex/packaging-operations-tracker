@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOperations } from '@/context/OperationsContext';
 import { 
@@ -17,9 +17,18 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart, Package, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, BarChart, Package, FileText, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProductionRate {
   project: string;
@@ -31,6 +40,8 @@ interface ProductionRate {
 
 const Analysis = () => {
   const { operations, machines, projects } = useOperations();
+  const [projectFilter, setProjectFilter] = useState<string>("");
+  const [machineFilter, setMachineFilter] = useState<string>("");
 
   // Calculate production rates for each project/machine combination
   const productionRates = useMemo(() => {
@@ -83,11 +94,45 @@ const Analysis = () => {
     return result;
   }, [operations]);
 
+  // Filter production rates based on selected filters
+  const filteredRates = useMemo(() => {
+    return productionRates.filter(rate => {
+      // Project filter
+      if (projectFilter && projectFilter !== "all" && rate.project !== projectFilter) {
+        return false;
+      }
+      
+      // Machine filter
+      if (machineFilter && machineFilter !== "all" && rate.machine !== machineFilter) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [productionRates, projectFilter, machineFilter]);
+
   // Get machine name by ID
   const getMachineName = (machineId: string) => {
     const machine = machines.find(m => m.id === machineId);
     return machine ? machine.name : machineId;
   };
+
+  // Reset filters
+  const resetFilters = () => {
+    setProjectFilter("");
+    setMachineFilter("");
+  };
+
+  // Get unique project names from operations
+  const uniqueProjects = useMemo(() => {
+    const projectSet = new Set<string>();
+    operations.forEach(op => {
+      if (op.project) {
+        projectSet.add(op.project);
+      }
+    });
+    return Array.from(projectSet);
+  }, [operations]);
 
   return (
     <div className="min-h-screen w-full flex flex-col justify-start items-center p-4 md:p-8 bg-gradient-to-b from-white to-blue-50">
@@ -105,6 +150,74 @@ const Analysis = () => {
             </h1>
           </div>
         </div>
+
+        <Card className="w-full shadow-subtle border border-border/50 mb-8">
+          <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-lg font-medium tracking-tight flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                <span>Filtrowanie</span>
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Łącznie: {filteredRates.length} wyników
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="flex flex-col space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="projectFilter">Filtruj po projekcie</Label>
+                  <Select value={projectFilter} onValueChange={setProjectFilter}>
+                    <SelectTrigger id="projectFilter" className="mt-1.5">
+                      <SelectValue placeholder="Wszystkie projekty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Wszystkie projekty</SelectItem>
+                      {uniqueProjects.map(project => (
+                        <SelectItem key={project} value={project}>
+                          {project}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="Brak projektu">Brak projektu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="machineFilter">Filtruj po operacji</Label>
+                  <Select value={machineFilter} onValueChange={setMachineFilter}>
+                    <SelectTrigger id="machineFilter" className="mt-1.5">
+                      <SelectValue placeholder="Wszystkie operacje" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Wszystkie operacje</SelectItem>
+                      {machines.map(machine => (
+                        <SelectItem key={machine.id} value={machine.id}>
+                          {machine.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {(projectFilter || machineFilter) && (
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="gap-1"
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Wyczyść filtry</span>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="w-full shadow-subtle border border-border/50 mb-8">
           <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
@@ -126,6 +239,17 @@ const Analysis = () => {
                   </Link>
                 </Button>
               </div>
+            ) : filteredRates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="mb-2">Brak wyników dla wybranych filtrów.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={resetFilters}
+                >
+                  <span>Wyczyść filtry</span>
+                </Button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -139,7 +263,7 @@ const Analysis = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {productionRates
+                    {filteredRates
                       .sort((a, b) => b.ratePerHour - a.ratePerHour)
                       .map((rate, index) => (
                       <TableRow key={`${rate.project}-${rate.machine}`}>
