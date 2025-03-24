@@ -63,12 +63,12 @@ const History = () => {
     }
     
     // Employee filter
-    if (employeeFilter && op.employee !== employeeFilter) {
+    if (employeeFilter && employeeFilter !== "all" && op.employee !== employeeFilter) {
       return false;
     }
     
     // Machine filter
-    if (machineFilter && op.machine !== machineFilter) {
+    if (machineFilter && machineFilter !== "all" && op.machine !== machineFilter) {
       return false;
     }
     
@@ -216,7 +216,7 @@ const History = () => {
                       <SelectValue placeholder="Wszyscy pracownicy" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Wszyscy pracownicy</SelectItem>
+                      <SelectItem value="all">Wszyscy pracownicy</SelectItem>
                       {employees.map(employee => (
                         <SelectItem key={employee.id} value={employee.id}>
                           {employee.name}
@@ -235,7 +235,7 @@ const History = () => {
                       <SelectValue placeholder="Wszystkie operacje" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Wszystkie operacje</SelectItem>
+                      <SelectItem value="all">Wszystkie operacje</SelectItem>
                       {machines.map(machine => (
                         <SelectItem key={machine.id} value={machine.id}>
                           {machine.name}
