@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, Package, Trash2, User, Calendar, Filter } from "lucide-react";
+import { ArrowLeft, Download, FileText, Package, Trash2, User, CalendarIcon, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useOperations } from "@/context/OperationsContext";
 import {
@@ -253,7 +253,7 @@ const History = () => {
                         variant="outline"
                         className="w-full mt-1.5 justify-start text-left font-normal"
                       >
-                        <Calendar className="mr-2 h-4 w-4" />
+                        <CalendarIcon className="mr-2 h-4 w-4" />
                         {endDateFilter ? (
                           format(endDateFilter, 'dd.MM.yyyy', { locale: pl })
                         ) : (
@@ -265,7 +265,7 @@ const History = () => {
                       <Calendar
                         mode="single"
                         selected={endDateFilter}
-                        onSelect={setEndDateFilter}
+                        onSelect={(date) => setEndDateFilter(date)}
                         initialFocus
                         className="p-3 pointer-events-auto"
                       />
