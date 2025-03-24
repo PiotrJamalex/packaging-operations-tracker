@@ -1,16 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { useOperations } from '@/context/OperationsContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Clock, FileText, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Clock, RotateCcw, CheckCircle2 } from "lucide-react";
 import EmployeeSelect from './EmployeeSelect';
 import MachineSelect from './MachineSelect';
 import DateTimeField from './DateTimeField';
 import ProductionCounter from './ProductionCounter';
-import FormField from './FormField';
+import ProjectSelect from './ProjectSelect';
 
 const OperationForm: React.FC = () => {
   const { addOperation } = useOperations();
@@ -63,12 +63,6 @@ const OperationForm: React.FC = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
-    if (errors[id]) setErrors({ ...errors, [id]: "" });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,24 +155,14 @@ const OperationForm: React.FC = () => {
             />
           </div>
           
-          <FormField
-            label="Nazwa projektu"
-            htmlFor="project"
+          <ProjectSelect
+            value={formData.project}
+            onChange={(value) => {
+              setFormData({...formData, project: value});
+              if (errors.project) setErrors({...errors, project: ""});
+            }}
             className={errors.project ? "border-destructive" : ""}
-          >
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="project"
-                type="text"
-                placeholder="Wprowadź nazwę projektu"
-                value={formData.project}
-                onChange={handleInputChange}
-                className="pl-10 focus:ring-2 focus:ring-primary/25"
-              />
-            </div>
-            {errors.project && <p className="text-xs text-destructive mt-1">{errors.project}</p>}
-          </FormField>
+          />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DateTimeField

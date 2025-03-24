@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { format } from "date-fns";
+import React, { useState, useEffect } from 'react';
+import { format, isValid } from "date-fns";
 import { pl } from "date-fns/locale";
 import { CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,15 @@ const DateTimeField: React.FC<DateTimeFieldProps> = ({
   className,
   minDate 
 }) => {
-  const [time, setTime] = useState(value ? format(value, 'HH:mm') : '');
+  // Ustawienie domyślnie dzisiejszej daty, jeśli nie podano wartości
+  useEffect(() => {
+    if (!value) {
+      const now = new Date();
+      onChange(now);
+    }
+  }, []);
+
+  const [time, setTime] = useState(value ? format(value, 'HH:mm') : format(new Date(), 'HH:mm'));
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) {
@@ -39,7 +47,7 @@ const DateTimeField: React.FC<DateTimeFieldProps> = ({
       return;
     }
 
-    // If time is set, combine date with time
+    // Jeśli czas jest ustawiony, połącz datę z czasem
     if (time) {
       const [hours, minutes] = time.split(':').map(Number);
       date.setHours(hours || 0, minutes || 0);
@@ -77,7 +85,7 @@ const DateTimeField: React.FC<DateTimeFieldProps> = ({
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {value ? (
+              {value && isValid(value) ? (
                 format(value, 'd MMM yyyy', { locale: pl })
               ) : (
                 <span>Wybierz datę</span>

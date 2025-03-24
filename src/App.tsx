@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 import { OperationsProvider } from "@/context/OperationsContext";
+import EmployeesManagement from "./pages/employees/EmployeesManagement";
+import MachinesManagement from "./pages/machines/MachinesManagement";
+import ProjectsManagement from "./pages/projects/ProjectsManagement";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +24,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/historia" element={<History />} />
+            <Route path="/zarzadzanie/pracownicy" element={<EmployeesManagement />} />
+            <Route path="/zarzadzanie/maszyny" element={<MachinesManagement />} />
+            <Route path="/zarzadzanie/projekty" element={<ProjectsManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

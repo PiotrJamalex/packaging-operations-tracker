@@ -1,278 +1,259 @@
 
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, BarChart2, SortAsc, SortDesc, Search } from 'lucide-react';
-import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { useOperations, Operation } from '@/context/OperationsContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { pl } from "date-fns/locale";
+import { ArrowLeft, Download, FileText, Package, Trash2, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useOperations } from "@/context/OperationsContext";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import OperationsStats from '@/components/OperationsStats';
-
-type SortField = 'employee' | 'machine' | 'project' | 'startTime' | 'endTime' | 'quantity';
-type SortOrder = 'asc' | 'desc';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { utils, writeFile } from 'xlsx';
+import { useState } from "react";
 
 const History = () => {
-  const { operations } = useOperations();
-  const [sortField, setSortField] = useState<SortField>('startTime');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [employeeFilter, setEmployeeFilter] = useState<string>('all');
-  const [machineFilter, setMachineFilter] = useState<string>('all');
-  const [projectFilter, setProjectFilter] = useState<string>('');
+  const { operations, clearOperations, employees, machines } = useOperations();
+  const [projectFilter, setProjectFilter] = useState("");
 
-  const uniqueEmployees = useMemo(() => {
-    const employees = operations.map(op => op.employee);
-    return ['all', ...Array.from(new Set(employees))];
-  }, [operations]);
-
-  const uniqueMachines = useMemo(() => {
-    const machines = operations.map(op => op.machine);
-    return ['all', ...Array.from(new Set(machines))];
-  }, [operations]);
-
-  const uniqueProjects = useMemo(() => {
-    const projects = operations.map(op => op.project).filter(Boolean);
-    return Array.from(new Set(projects));
-  }, [operations]);
-
-  const sortedAndFilteredOperations = useMemo(() => {
-    return [...operations]
-      .filter(op => employeeFilter === 'all' || op.employee === employeeFilter)
-      .filter(op => machineFilter === 'all' || op.machine === machineFilter)
-      .filter(op => !projectFilter || (op.project && op.project.toLowerCase().includes(projectFilter.toLowerCase())))
-      .sort((a, b) => {
-        let comparison = 0;
-        
-        if (sortField === 'employee') {
-          comparison = a.employee.localeCompare(b.employee);
-        } else if (sortField === 'machine') {
-          comparison = a.machine.localeCompare(b.machine);
-        } else if (sortField === 'project') {
-          comparison = (a.project || '').localeCompare(b.project || '');
-        } else if (sortField === 'startTime') {
-          comparison = a.startTime.getTime() - b.startTime.getTime();
-        } else if (sortField === 'endTime') {
-          comparison = a.endTime.getTime() - b.endTime.getTime();
-        } else if (sortField === 'quantity') {
-          comparison = a.quantity - b.quantity;
-        }
-        
-        return sortOrder === 'asc' ? comparison : -comparison;
-      });
-  }, [operations, sortField, sortOrder, employeeFilter, machineFilter, projectFilter]);
-
-  const handleSort = (field: SortField) => {
-    if (field === sortField) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('asc');
-    }
+  // Pobierz nazwy pracowników na podstawie ID
+  const getEmployeeName = (employeeId: string) => {
+    const employee = employees.find(emp => emp.id === employeeId);
+    return employee ? employee.name : employeeId;
   };
 
-  const formatDateTime = (date: Date) => {
-    return format(date, 'dd MMM yyyy HH:mm', { locale: pl });
+  // Pobierz nazwy maszyn na podstawie ID
+  const getMachineName = (machineId: string) => {
+    const machine = machines.find(m => m.id === machineId);
+    return machine ? machine.name : machineId;
   };
 
-  const calculateDuration = (start: Date, end: Date) => {
-    const durationMs = end.getTime() - start.getTime();
-    const minutes = Math.floor(durationMs / 60000);
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    
-    return `${hours}h ${remainingMinutes}m`;
-  };
+  // Filtrowanie operacji na podstawie projektu
+  const filteredOperations = projectFilter
+    ? operations.filter(op => 
+        op.project?.toLowerCase().includes(projectFilter.toLowerCase())
+      )
+    : operations;
 
-  const renderSortIcon = (field: SortField) => {
-    if (field !== sortField) return <SortAsc className="ml-1 h-4 w-4 opacity-30" />;
-    return sortOrder === 'asc' ? 
-      <SortAsc className="ml-1 h-4 w-4" /> : 
-      <SortDesc className="ml-1 h-4 w-4" />;
+  // Sortowanie operacji - najnowsze pierwsze
+  const sortedOperations = [...filteredOperations].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  // Eksport do Excela
+  const handleExport = () => {
+    // Przygotuj dane do eksportu
+    const exportData = sortedOperations.map(op => ({
+      "Data utworzenia": format(new Date(op.createdAt), 'dd.MM.yyyy HH:mm', { locale: pl }),
+      "Pracownik": getEmployeeName(op.employee),
+      "Maszyna": getMachineName(op.machine),
+      "Projekt": op.project || "",
+      "Data rozpoczęcia": format(new Date(op.startTime), 'dd.MM.yyyy HH:mm', { locale: pl }),
+      "Data zakończenia": format(new Date(op.endTime), 'dd.MM.yyyy HH:mm', { locale: pl }),
+      "Ilość": op.quantity
+    }));
+
+    // Utwórz arkusz
+    const ws = utils.json_to_sheet(exportData);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Operacje");
+
+    // Zapisz plik
+    writeFile(wb, "operacje_produkcyjne.xlsx");
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-white to-blue-50 p-4 md:p-8">
+    <div className="min-h-screen w-full flex flex-col justify-start items-center p-4 md:p-8 bg-gradient-to-b from-white to-blue-50">
       <div className="w-full max-w-6xl mx-auto">
-        <header className="mb-8 flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild className="mr-2">
-            <Link to="/">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between">
+          <div className="flex items-center mb-4 sm:mb-0">
+            <Button asChild variant="ghost" className="mr-4">
+              <Link to="/" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Powrót</span>
+              </Link>
+            </Button>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700">
               Historia operacji
             </h1>
-            <p className="text-muted-foreground">
-              Przeglądaj i analizuj zapisane operacje produkcyjne
-            </p>
           </div>
-        </header>
-
-        <Tabs defaultValue="history" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="history">Historia</TabsTrigger>
-            <TabsTrigger value="statistics" className="flex items-center gap-1">
-              <BarChart2 className="h-4 w-4" />
-              <span>Statystyki</span>
-            </TabsTrigger>
-          </TabsList>
           
-          <TabsContent value="history" className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-wrap">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleExport}
+              className="gap-1"
+              disabled={sortedOperations.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              <span>Eksportuj</span>
+            </Button>
+            
+            {operations.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 border-destructive/50 text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="h-4 w-4" />
+                    <span>Wyczyść</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-white">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkie operacje?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Ta akcja usunie wszystkie zarejestrowane operacje i nie będzie można ich odzyskać.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={clearOperations}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Usuń wszystko
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </div>
+        
+        <Card className="w-full shadow-subtle border border-border/50 mb-8">
+          <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+            <CardTitle className="flex items-center justify-between">
+              <span className="text-lg font-medium tracking-tight flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                <span>Filtrowanie</span>
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Łącznie: {sortedOperations.length} operacji
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="flex flex-col space-y-4">
               <div>
-                <label htmlFor="employeeFilter" className="text-sm font-medium block mb-1">
-                  Pracownik
-                </label>
-                <select
-                  id="employeeFilter"
-                  value={employeeFilter}
-                  onChange={(e) => setEmployeeFilter(e.target.value)}
-                  className="px-3 py-2 bg-white border border-input rounded-md w-full max-w-[200px]"
-                >
-                  {uniqueEmployees.map(employee => (
-                    <option key={employee} value={employee}>
-                      {employee === 'all' ? 'Wszyscy' : employee}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="machineFilter" className="text-sm font-medium block mb-1">
-                  Maszyna
-                </label>
-                <select
-                  id="machineFilter"
-                  value={machineFilter}
-                  onChange={(e) => setMachineFilter(e.target.value)}
-                  className="px-3 py-2 bg-white border border-input rounded-md w-full max-w-[200px]"
-                >
-                  {uniqueMachines.map(machine => (
-                    <option key={machine} value={machine}>
-                      {machine === 'all' ? 'Wszystkie' : machine}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="projectFilter" className="text-sm font-medium block mb-1">
-                  Projekt
-                </label>
-                <div className="relative max-w-[250px]">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="projectFilter">Filtruj po nazwie projektu</Label>
+                <div className="relative mt-1.5">
+                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="projectFilter"
                     value={projectFilter}
                     onChange={(e) => setProjectFilter(e.target.value)}
-                    placeholder="Wyszukaj projekt..."
-                    className="pl-10 focus:ring-2 focus:ring-primary/25"
+                    className="pl-10"
+                    placeholder="Wpisz nazwę projektu..."
                   />
                 </div>
               </div>
             </div>
-            
-            <div className="rounded-md border shadow-sm bg-white">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead 
-                      className="w-[150px] cursor-pointer"
-                      onClick={() => handleSort('employee')}
-                    >
-                      <div className="flex items-center">
-                        Pracownik {renderSortIcon('employee')}
-                      </div>
-                    </TableHead>
-                    
-                    <TableHead 
-                      className="w-[150px] cursor-pointer"
-                      onClick={() => handleSort('machine')}
-                    >
-                      <div className="flex items-center">
-                        Maszyna {renderSortIcon('machine')}
-                      </div>
-                    </TableHead>
-
-                    <TableHead 
-                      className="w-[150px] cursor-pointer"
-                      onClick={() => handleSort('project')}
-                    >
-                      <div className="flex items-center">
-                        Projekt {renderSortIcon('project')}
-                      </div>
-                    </TableHead>
-                    
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort('startTime')}
-                    >
-                      <div className="flex items-center">
-                        Początek {renderSortIcon('startTime')}
-                      </div>
-                    </TableHead>
-                    
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort('endTime')}
-                    >
-                      <div className="flex items-center">
-                        Koniec {renderSortIcon('endTime')}
-                      </div>
-                    </TableHead>
-                    
-                    <TableHead>Czas trwania</TableHead>
-                    
-                    <TableHead 
-                      className="text-right cursor-pointer"
-                      onClick={() => handleSort('quantity')}
-                    >
-                      <div className="flex items-center justify-end">
-                        Ilość {renderSortIcon('quantity')}
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                
-                <TableBody>
-                  {sortedAndFilteredOperations.length === 0 ? (
+          </CardContent>
+        </Card>
+        
+        <Card className="w-full shadow-subtle border border-border/50">
+          <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+            <CardTitle className="text-lg font-medium tracking-tight flex items-center gap-2">
+              <span className="inline-block p-1.5 rounded-full bg-primary/10">
+                <Package className="h-4 w-4 text-primary" />
+              </span>
+              Lista operacji produkcyjnych
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {operations.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="mb-2">Brak zarejestrowanych operacji.</p>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/" className="flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Wróć do formularza</span>
+                  </Link>
+                </Button>
+              </div>
+            ) : sortedOperations.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="mb-2">Brak operacji spełniających kryteria wyszukiwania.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setProjectFilter("")}
+                >
+                  <span>Wyczyść filtr</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
-                        Brak zarejestrowanych operacji
+                      <TableHead className="w-[130px]">Data</TableHead>
+                      <TableHead className="w-[100px]">Pracownik</TableHead>
+                      <TableHead className="w-[100px]">Maszyna</TableHead>
+                      <TableHead>Projekt</TableHead>
+                      <TableHead className="w-[120px]">Czas rozpoczęcia</TableHead>
+                      <TableHead className="w-[120px]">Czas zakończenia</TableHead>
+                      <TableHead className="text-right w-[80px]">Ilość</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedOperations.map((op) => (
+                      <TableRow key={op.id}>
+                        <TableCell className="font-medium">
+                          {format(new Date(op.createdAt), 'dd.MM.yyyy', { locale: pl })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{getEmployeeName(op.employee)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{getMachineName(op.machine)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{op.project}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(op.startTime), 'HH:mm dd.MM', { locale: pl })}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(op.endTime), 'HH:mm dd.MM', { locale: pl })}
+                        </TableCell>
+                        <TableCell className="text-right">{op.quantity}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={6}>Suma sztuk</TableCell>
+                      <TableCell className="text-right">
+                        {sortedOperations.reduce((sum, op) => sum + op.quantity, 0)}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    sortedAndFilteredOperations.map((operation) => (
-                      <TableRow key={operation.id}>
-                        <TableCell className="font-medium">{operation.employee}</TableCell>
-                        <TableCell>{operation.machine}</TableCell>
-                        <TableCell>{operation.project || '-'}</TableCell>
-                        <TableCell>{formatDateTime(operation.startTime)}</TableCell>
-                        <TableCell>{formatDateTime(operation.endTime)}</TableCell>
-                        <TableCell>{calculateDuration(operation.startTime, operation.endTime)}</TableCell>
-                        <TableCell className="text-right">{operation.quantity}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="statistics">
-            <OperationsStats operations={sortedAndFilteredOperations} />
-          </TabsContent>
-        </Tabs>
+                  </TableFooter>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
