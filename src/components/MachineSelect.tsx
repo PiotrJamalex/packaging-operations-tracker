@@ -14,7 +14,7 @@ import {
 import FormField from './FormField';
 import { useOperations } from '@/context/OperationsContext';
 import { Button } from './ui/button';
-import { useRouter } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface MachineSelectProps {
   value: string;
@@ -37,10 +37,10 @@ const getIconComponent = (iconName?: string) => {
 
 const MachineSelect: React.FC<MachineSelectProps> = ({ value, onChange, className }) => {
   const { machines } = useOperations();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleManage = () => {
-    router.navigate('/zarzadzanie/maszyny');
+    navigate('/zarzadzanie/maszyny');
   };
 
   return (

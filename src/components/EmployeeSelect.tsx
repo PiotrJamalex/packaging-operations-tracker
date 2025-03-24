@@ -14,7 +14,7 @@ import {
 import FormField from './FormField';
 import { useOperations } from '@/context/OperationsContext';
 import { Button } from './ui/button';
-import { useRouter } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface EmployeeSelectProps {
   value: string;
@@ -24,10 +24,10 @@ interface EmployeeSelectProps {
 
 const EmployeeSelect: React.FC<EmployeeSelectProps> = ({ value, onChange, className }) => {
   const { employees } = useOperations();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleManage = () => {
-    router.navigate('/zarzadzanie/pracownicy');
+    navigate('/zarzadzanie/pracownicy');
   };
 
   return (

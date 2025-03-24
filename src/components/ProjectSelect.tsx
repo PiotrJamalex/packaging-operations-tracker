@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import FormField from './FormField';
 import { useOperations } from '@/context/OperationsContext';
-import { useRouter } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface ProjectSelectProps {
   value: string;
@@ -30,10 +30,10 @@ const ProjectSelect: React.FC<ProjectSelectProps> = ({ value, onChange, classNam
   const { projects, addProject } = useOperations();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const router = useRouter();
+  const navigate = useNavigate();
   
   const handleManage = () => {
-    router.navigate('/zarzadzanie/projekty');
+    navigate('/zarzadzanie/projekty');
   };
 
   const handleSelect = (currentValue: string) => {
