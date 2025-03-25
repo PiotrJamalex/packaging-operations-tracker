@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -50,6 +51,35 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Running with Docker
+
+This project can be run in a Docker container. Here's how to build and run it:
+
+### Using Docker Compose (recommended)
+
+```sh
+# Build and start the container
+docker-compose up -d
+
+# Stop the container
+docker-compose down
+```
+
+### Using Docker directly
+
+```sh
+# Build the Docker image
+docker build -t packaging-operations-tracker .
+
+# Run the container
+docker run -p 8080:80 -d --name packaging-ops packaging-operations-tracker
+
+# Stop the container
+docker stop packaging-ops
+```
+
+The application will be available at http://localhost:8080
+
 ## What technologies are used for this project?
 
 This project is built with .
@@ -59,10 +89,13 @@ This project is built with .
 - React
 - shadcn-ui
 - Tailwind CSS
+- Docker
 
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/c9e05a68-8eee-424f-87df-c737a1034989) and click on Share -> Publish.
+
+Alternatively, you can deploy the Docker container to any cloud provider that supports Docker containers.
 
 ## I want to use a custom domain - is that possible?
 
