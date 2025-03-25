@@ -1,6 +1,16 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from "sonner";
+import {
+  fetchOperations,
+  saveOperations,
+  fetchEmployees,
+  saveEmployees,
+  fetchMachines,
+  saveMachines,
+  fetchProjects,
+  saveProjects
+} from '@/services/dataService';
 
 export interface Operation {
   id: string;
@@ -43,25 +53,7 @@ interface OperationsContextType {
   addProject: (project: Omit<Project, 'id'>) => void;
   removeProject: (id: string) => void;
   importProjects: (projects: Omit<Project, 'id'>[]) => void;
-}
-
-const STORAGE_KEY_OPERATIONS = 'production-operations';
-const STORAGE_KEY_EMPLOYEES = 'production-employees';
-const STORAGE_KEY_MACHINES = 'production-machines';
-const STORAGE_KEY_PROJECTS = 'production-projects';
-
-const OperationsContext = createContext<OperationsContextType | undefined>(undefined);
-
-export const useOperations = () => {
-  const context = useContext(OperationsContext);
-  if (!context) {
-    throw new Error('useOperations must be used within an OperationsProvider');
-  }
-  return context;
-};
-
-interface OperationsProviderProps {
-  children: ReactNode;
+  loading: boolean;
 }
 
 // Domyślni pracownicy
@@ -79,84 +71,118 @@ const defaultMachines: Machine[] = [
   { id: "bigówka", name: "Bigówka", icon: "scissors" },
 ];
 
+const OperationsContext = createContext<OperationsContextType | undefined>(undefined);
+
+export const useOperations = () => {
+  const context = useContext(OperationsContext);
+  if (!context) {
+    throw new Error('useOperations must be used within an OperationsProvider');
+  }
+  return context;
+};
+
+interface OperationsProviderProps {
+  children: ReactNode;
+}
+
 export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children }) => {
-  const [operations, setOperations] = useState<Operation[]>(() => {
-    const savedOperations = localStorage.getItem(STORAGE_KEY_OPERATIONS);
-    if (savedOperations) {
-      try {
-        const parsed = JSON.parse(savedOperations);
-        return parsed.map((op: any) => ({
-          ...op,
-          startTime: new Date(op.startTime),
-          endTime: new Date(op.endTime),
-          createdAt: new Date(op.createdAt)
-        }));
-      } catch (error) {
-        console.error('Error parsing saved operations:', error);
-        return [];
-      }
-    }
-    return [];
-  });
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    const savedEmployees = localStorage.getItem(STORAGE_KEY_EMPLOYEES);
-    if (savedEmployees) {
-      try {
-        return JSON.parse(savedEmployees);
-      } catch (error) {
-        console.error('Error parsing saved employees:', error);
-        return defaultEmployees;
-      }
-    }
-    return defaultEmployees;
-  });
-
-  const [machines, setMachines] = useState<Machine[]>(() => {
-    const savedMachines = localStorage.getItem(STORAGE_KEY_MACHINES);
-    if (savedMachines) {
-      try {
-        return JSON.parse(savedMachines);
-      } catch (error) {
-        console.error('Error parsing saved machines:', error);
-        return defaultMachines;
-      }
-    }
-    return defaultMachines;
-  });
-
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const savedProjects = localStorage.getItem(STORAGE_KEY_PROJECTS);
-    if (savedProjects) {
-      try {
-        return JSON.parse(savedProjects);
-      } catch (error) {
-        console.error('Error parsing saved projects:', error);
-        return [];
-      }
-    }
-    return [];
-  });
-
-  // Zapisz operacje do localStorage gdy się zmienią
+  // Załaduj dane z serwera przy pierwszym renderowaniu
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_OPERATIONS, JSON.stringify(operations));
-  }, [operations]);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Załaduj operacje
+        const fetchedOperations = await fetchOperations();
+        setOperations(fetchedOperations);
 
-  // Zapisz pracowników do localStorage gdy się zmienią
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_EMPLOYEES, JSON.stringify(employees));
-  }, [employees]);
+        // Załaduj pracowników lub użyj domyślnych
+        const fetchedEmployees = await fetchEmployees();
+        setEmployees(fetchedEmployees.length > 0 ? fetchedEmployees : defaultEmployees);
 
-  // Zapisz maszyny do localStorage gdy się zmienią
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_MACHINES, JSON.stringify(machines));
-  }, [machines]);
+        // Załaduj maszyny lub użyj domyślnych
+        const fetchedMachines = await fetchMachines();
+        setMachines(fetchedMachines.length > 0 ? fetchedMachines : defaultMachines);
 
-  // Zapisz projekty do localStorage gdy się zmienią
+        // Załaduj projekty
+        const fetchedProjects = await fetchProjects();
+        setProjects(fetchedProjects);
+
+        // Jeśli to pierwszy start aplikacji, zapisz domyślne dane
+        if (fetchedEmployees.length === 0) {
+          await saveEmployees(defaultEmployees);
+        }
+        if (fetchedMachines.length === 0) {
+          await saveMachines(defaultMachines);
+        }
+
+        setInitialized(true);
+      } catch (error) {
+        console.error("Błąd podczas ładowania danych:", error);
+        toast.error("Błąd podczas ładowania danych", {
+          description: "Spróbuj odświeżyć stronę"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Zapisz operacje do serwera gdy się zmienią
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
-  }, [projects]);
+    if (initialized && operations.length >= 0) {
+      saveOperations(operations).catch(error => {
+        console.error("Błąd podczas zapisywania operacji:", error);
+        toast.error("Błąd podczas zapisywania operacji", {
+          description: "Zmiany mogą nie zostać zapisane"
+        });
+      });
+    }
+  }, [operations, initialized]);
+
+  // Zapisz pracowników do serwera gdy się zmienią
+  useEffect(() => {
+    if (initialized && employees.length > 0) {
+      saveEmployees(employees).catch(error => {
+        console.error("Błąd podczas zapisywania pracowników:", error);
+        toast.error("Błąd podczas zapisywania pracowników", {
+          description: "Zmiany mogą nie zostać zapisane"
+        });
+      });
+    }
+  }, [employees, initialized]);
+
+  // Zapisz maszyny do serwera gdy się zmienią
+  useEffect(() => {
+    if (initialized && machines.length > 0) {
+      saveMachines(machines).catch(error => {
+        console.error("Błąd podczas zapisywania maszyn:", error);
+        toast.error("Błąd podczas zapisywania maszyn", {
+          description: "Zmiany mogą nie zostać zapisane"
+        });
+      });
+    }
+  }, [machines, initialized]);
+
+  // Zapisz projekty do serwera gdy się zmienią
+  useEffect(() => {
+    if (initialized && projects.length >= 0) {
+      saveProjects(projects).catch(error => {
+        console.error("Błąd podczas zapisywania projektów:", error);
+        toast.error("Błąd podczas zapisywania projektów", {
+          description: "Zmiany mogą nie zostać zapisane"
+        });
+      });
+    }
+  }, [projects, initialized]);
 
   const addOperation = (operation: Omit<Operation, 'id' | 'createdAt'>) => {
     const newOperation: Operation = {
@@ -177,7 +203,6 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
 
   const clearOperations = () => {
     setOperations([]);
-    localStorage.removeItem(STORAGE_KEY_OPERATIONS);
     toast.info("Wszystkie operacje zostały usunięte");
   };
 
@@ -286,7 +311,8 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
       removeMachine,
       addProject,
       removeProject,
-      importProjects
+      importProjects,
+      loading
     }}>
       {children}
     </OperationsContext.Provider>

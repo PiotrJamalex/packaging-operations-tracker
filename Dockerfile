@@ -18,7 +18,17 @@ COPY . .
 RUN npm run build
 
 # Etap produkcyjny
-FROM nginx:alpine
+FROM openresty/openresty:alpine
+
+# Tworzenie katalogów do przechowywania danych
+RUN mkdir -p /app/data/tmp && chmod 777 /app/data && chmod 777 /app/data/tmp
+
+# Inicjowanie plików JSON z pustymi tablicami
+RUN echo "[]" > /app/data/operations.json && \
+    echo "[]" > /app/data/employees.json && \
+    echo "[]" > /app/data/machines.json && \
+    echo "[]" > /app/data/projects.json && \
+    chmod 666 /app/data/*.json
 
 # Kopiowanie plików z etapu budowania do katalogu serwera Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -29,5 +39,5 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Exposing port 80
 EXPOSE 80
 
-# Uruchomienie Nginx
+# Uruchomienie OpenResty
 CMD ["nginx", "-g", "daemon off;"]

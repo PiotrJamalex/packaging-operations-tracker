@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useOperations } from '@/context/OperationsContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Clock, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Clock, RotateCcw, CheckCircle2, Loader2 } from "lucide-react";
 import EmployeeSelect from './EmployeeSelect';
 import OperationSelect from './OperationSelect';
 import DateTimeField from './DateTimeField';
@@ -13,7 +12,7 @@ import ProductionCounter from './ProductionCounter';
 import ProjectSelect from './ProjectSelect';
 
 const OperationForm: React.FC = () => {
-  const { addOperation } = useOperations();
+  const { addOperation, loading } = useOperations();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Set default start and end time to today's date
@@ -125,6 +124,27 @@ const OperationForm: React.FC = () => {
     });
     setErrors({});
   };
+
+  if (loading) {
+    return (
+      <Card className="w-full max-w-xl mx-auto shadow-subtle border border-border/50 overflow-hidden bg-white/90 backdrop-blur-sm">
+        <CardHeader className="pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardTitle className="text-xl font-medium tracking-tight flex items-center gap-2">
+            <span className="inline-block p-1.5 rounded-full bg-primary/10">
+              <Clock className="h-5 w-5 text-primary" />
+            </span>
+            Rejestracja operacji produkcyjnej
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 pb-6 flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Ładowanie danych...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-xl mx-auto shadow-subtle border border-border/50 overflow-hidden bg-white/90 backdrop-blur-sm">
