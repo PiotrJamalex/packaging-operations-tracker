@@ -1,4 +1,3 @@
-
 import { Operation, Employee, Machine, Project } from '@/context/OperationsContext';
 
 const API_URL = '/api';
@@ -23,6 +22,8 @@ const parseDates = (operations: any[]): Operation[] => {
 const isValidJsonResponse = async (response: Response): Promise<boolean> => {
   try {
     const text = await response.text();
+    console.log('Response text:', text.substring(0, 100)); // Log beginning of response
+    
     // Check if the response starts with HTML (suggesting it's not a valid JSON response)
     if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
       console.error('Received HTML instead of JSON:', text.substring(0, 100));
@@ -31,11 +32,13 @@ const isValidJsonResponse = async (response: Response): Promise<boolean> => {
     
     // If empty, treat as empty array
     if (!text.trim()) {
+      console.log('Empty response, treating as empty array');
       return true;
     }
     
     // Try to parse as JSON
     JSON.parse(text);
+    console.log('Valid JSON response');
     return true;
   } catch (error) {
     console.error('Invalid JSON response:', error);
@@ -45,11 +48,15 @@ const isValidJsonResponse = async (response: Response): Promise<boolean> => {
 
 // Helper to safely parse JSON
 const safelyParseJson = async (response: Response): Promise<any> => {
-  const text = await response.text();
-  if (!text.trim()) {
-    return [];
-  }
   try {
+    const text = await response.text();
+    console.log('Parsing JSON, text length:', text.length);
+    
+    if (!text.trim()) {
+      console.log('Empty response, returning empty array');
+      return [];
+    }
+    
     return JSON.parse(text);
   } catch (error) {
     console.error('Failed to parse JSON:', error);
@@ -57,18 +64,46 @@ const safelyParseJson = async (response: Response): Promise<any> => {
   }
 };
 
+// Helper to fetch data with retry
+const fetchWithRetry = async (url: string, options?: RequestInit, retries = 3): Promise<Response> => {
+  let lastError;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Attempt ${i + 1} to fetch ${url}`);
+      const response = await fetch(url, options);
+      
+      if (!response.ok) {
+        console.error(`Attempt ${i + 1} failed with status:`, response.status);
+        lastError = new Error(`HTTP error ${response.status}`);
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`Attempt ${i + 1} failed with error:`, error);
+      lastError = error;
+    }
+    
+    // Wait before retrying (exponential backoff)
+    if (i < retries - 1) {
+      const delay = Math.pow(2, i) * 1000;
+      console.log(`Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError || new Error(`Failed to fetch ${url} after ${retries} attempts`);
+};
+
 export const fetchOperations = async (): Promise<Operation[]> => {
   try {
     console.log('Fetching operations from API...');
-    const response = await fetch(`${API_URL}/operations`);
+    const response = await fetchWithRetry(`${API_URL}/operations`);
     console.log('Operations response status:', response.status);
     
-    if (!response.ok) {
-      console.error('Failed to fetch operations with status:', response.status);
-      return operationsCache;
-    }
-    
-    const isValidJson = await isValidJsonResponse(response.clone());
+    const clone = response.clone();
+    const isValidJson = await isValidJsonResponse(clone);
     if (!isValidJson) {
       console.error('Invalid JSON response for operations');
       return operationsCache;
@@ -88,18 +123,13 @@ export const fetchOperations = async (): Promise<Operation[]> => {
 export const saveOperations = async (operations: Operation[]): Promise<boolean> => {
   try {
     console.log('Saving operations to API...', operations);
-    const response = await fetch(`${API_URL}/operations`, {
+    const response = await fetchWithRetry(`${API_URL}/operations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(operations)
     });
     
     console.log('Save operations response status:', response.status);
-    if (!response.ok) {
-      console.error('Failed to save operations with status:', response.status);
-      return false;
-    }
-    
     operationsCache = operations;
     return true;
   } catch (error) {
@@ -111,15 +141,11 @@ export const saveOperations = async (operations: Operation[]): Promise<boolean> 
 export const fetchEmployees = async (): Promise<Employee[]> => {
   try {
     console.log('Fetching employees from API...');
-    const response = await fetch(`${API_URL}/employees`);
+    const response = await fetchWithRetry(`${API_URL}/employees`);
     console.log('Employees response status:', response.status);
     
-    if (!response.ok) {
-      console.error('Failed to fetch employees with status:', response.status);
-      return employeesCache;
-    }
-    
-    const isValidJson = await isValidJsonResponse(response.clone());
+    const clone = response.clone();
+    const isValidJson = await isValidJsonResponse(clone);
     if (!isValidJson) {
       console.error('Invalid JSON response for employees');
       return employeesCache;
@@ -139,18 +165,13 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 export const saveEmployees = async (employees: Employee[]): Promise<boolean> => {
   try {
     console.log('Saving employees to API...', employees);
-    const response = await fetch(`${API_URL}/employees`, {
+    const response = await fetchWithRetry(`${API_URL}/employees`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(employees)
     });
     
     console.log('Save employees response status:', response.status);
-    if (!response.ok) {
-      console.error('Failed to save employees with status:', response.status);
-      return false;
-    }
-    
     employeesCache = employees;
     return true;
   } catch (error) {
@@ -162,15 +183,11 @@ export const saveEmployees = async (employees: Employee[]): Promise<boolean> => 
 export const fetchMachines = async (): Promise<Machine[]> => {
   try {
     console.log('Fetching machines from API...');
-    const response = await fetch(`${API_URL}/machines`);
+    const response = await fetchWithRetry(`${API_URL}/machines`);
     console.log('Machines response status:', response.status);
     
-    if (!response.ok) {
-      console.error('Failed to fetch machines with status:', response.status);
-      return machinesCache;
-    }
-    
-    const isValidJson = await isValidJsonResponse(response.clone());
+    const clone = response.clone();
+    const isValidJson = await isValidJsonResponse(clone);
     if (!isValidJson) {
       console.error('Invalid JSON response for machines');
       return machinesCache;
@@ -190,18 +207,13 @@ export const fetchMachines = async (): Promise<Machine[]> => {
 export const saveMachines = async (machines: Machine[]): Promise<boolean> => {
   try {
     console.log('Saving machines to API...', machines);
-    const response = await fetch(`${API_URL}/machines`, {
+    const response = await fetchWithRetry(`${API_URL}/machines`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(machines)
     });
     
     console.log('Save machines response status:', response.status);
-    if (!response.ok) {
-      console.error('Failed to save machines with status:', response.status);
-      return false;
-    }
-    
     machinesCache = machines;
     return true;
   } catch (error) {
@@ -213,15 +225,11 @@ export const saveMachines = async (machines: Machine[]): Promise<boolean> => {
 export const fetchProjects = async (): Promise<Project[]> => {
   try {
     console.log('Fetching projects from API...');
-    const response = await fetch(`${API_URL}/projects`);
+    const response = await fetchWithRetry(`${API_URL}/projects`);
     console.log('Projects response status:', response.status);
     
-    if (!response.ok) {
-      console.error('Failed to fetch projects with status:', response.status);
-      return projectsCache;
-    }
-    
-    const isValidJson = await isValidJsonResponse(response.clone());
+    const clone = response.clone();
+    const isValidJson = await isValidJsonResponse(clone);
     if (!isValidJson) {
       console.error('Invalid JSON response for projects');
       return projectsCache;
@@ -241,18 +249,13 @@ export const fetchProjects = async (): Promise<Project[]> => {
 export const saveProjects = async (projects: Project[]): Promise<boolean> => {
   try {
     console.log('Saving projects to API...', projects);
-    const response = await fetch(`${API_URL}/projects`, {
+    const response = await fetchWithRetry(`${API_URL}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(projects)
     });
     
     console.log('Save projects response status:', response.status);
-    if (!response.ok) {
-      console.error('Failed to save projects with status:', response.status);
-      return false;
-    }
-    
     projectsCache = projects;
     return true;
   } catch (error) {

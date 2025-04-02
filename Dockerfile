@@ -21,14 +21,20 @@ RUN npm run build
 FROM openresty/openresty:alpine
 
 # Tworzenie katalogów do przechowywania danych
-RUN mkdir -p /app/data/tmp && chmod 777 /app/data && chmod 777 /app/data/tmp
+RUN mkdir -p /app/data/tmp && \
+    chmod -R 777 /app/data && \
+    chmod -R 777 /app/data/tmp
 
-# Inicjowanie plików JSON z pustymi tablicami
-RUN echo "[]" > /app/data/operations.json && \
-    echo "[]" > /app/data/employees.json && \
-    echo "[]" > /app/data/machines.json && \
-    echo "[]" > /app/data/projects.json && \
-    chmod 666 /app/data/*.json
+# Inicjowanie plików JSON tylko jeśli nie istnieją
+RUN echo "[]" > /app/data/operations.json.template && \
+    echo "[]" > /app/data/employees.json.template && \
+    echo "[]" > /app/data/machines.json.template && \
+    echo "[]" > /app/data/projects.json.template && \
+    chmod 666 /app/data/*.json.template
+
+# Skrypt startowy do inicjalizacji plików JSON
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Kopiowanie plików z etapu budowania do katalogu serwera Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -39,5 +45,5 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Exposing port 80
 EXPOSE 80
 
-# Uruchomienie OpenResty
-CMD ["nginx", "-g", "daemon off;"]
+# Uruchomienie skryptu startowego i OpenResty
+ENTRYPOINT ["/docker-entrypoint.sh"]
