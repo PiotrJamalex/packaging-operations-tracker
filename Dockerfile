@@ -21,18 +21,10 @@ RUN npm run build
 FROM openresty/openresty:alpine
 
 # Tworzenie katalogów do przechowywania danych
-RUN mkdir -p /app/data/tmp && \
-    chmod -R 777 /app/data && \
-    chmod -R 777 /app/data/tmp
+RUN mkdir -p /app/data && \
+    chmod -R 777 /app/data
 
-# Inicjowanie plików JSON tylko jeśli nie istnieją
-RUN echo "[]" > /app/data/operations.json.template && \
-    echo "[]" > /app/data/employees.json.template && \
-    echo "[]" > /app/data/machines.json.template && \
-    echo "[]" > /app/data/projects.json.template && \
-    chmod 666 /app/data/*.json.template
-
-# Skrypt startowy do inicjalizacji plików JSON
+# Kopiowanie skryptu startowego
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

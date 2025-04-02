@@ -2,11 +2,14 @@
 #!/bin/sh
 set -e
 
+# Utwórz katalog danych, jeśli nie istnieje
+mkdir -p /app/data
+
 # Initialize JSON files if they don't exist
 for file in operations employees machines projects; do
     if [ ! -f "/app/data/$file.json" ]; then
         echo "Initializing $file.json with empty array"
-        cp "/app/data/$file.json.template" "/app/data/$file.json"
+        echo "[]" > "/app/data/$file.json"
     fi
 done
 
