@@ -20,8 +20,10 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Create data directory
-RUN mkdir -p /app/data
+# Install the lua module
+RUN apk update && \
+    apk add --no-cache nginx-mod-http-lua && \
+    mkdir -p /app/data /tmp/nginx/client-body
 
 # Copy built files from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -32,6 +34,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+
+# Set correct permissions
+RUN mkdir -p /app/data && \
+    chmod -R 777 /app/data
 
 # Expose port
 EXPOSE 80

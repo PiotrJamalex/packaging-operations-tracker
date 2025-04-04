@@ -17,5 +17,12 @@ done
 chmod -R 777 /app/data
 chmod 666 /app/data/*.json
 
+# Debug information
+echo "Directory structure:"
+ls -la /app
+ls -la /app/data
+ls -la /usr/share/nginx/html
+
 # Start nginx
+echo "Starting nginx..."
 nginx -g "daemon off;"
