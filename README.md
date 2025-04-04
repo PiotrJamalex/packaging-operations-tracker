@@ -1,102 +1,48 @@
 
-# Welcome to your Lovable project
+# Packaging Operations Tracker
 
-## Project info
+## Instrukcja instalacji
 
-**URL**: https://lovable.dev/projects/c9e05a68-8eee-424f-87df-c737a1034989
+### Wymagania
+- Docker
+- Docker Compose
 
-## How can I edit this code?
+### Instalacja
 
-There are several ways of editing your application.
+1. Sklonuj repozytorium lub ściągnij pliki aplikacji
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/c9e05a68-8eee-424f-87df-c737a1034989) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+2. Uruchom aplikację za pomocą Docker Compose:
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+docker-compose up -d
 ```
 
-**Edit a file directly in GitHub**
+3. Aplikacja będzie dostępna pod adresem:
+```
+http://localhost:8080
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## Running with Docker
-
-This project can be run in a Docker container. Here's how to build and run it:
-
-### Using Docker Compose (recommended)
-
+4. Aby zatrzymać aplikację:
 ```sh
-# Build and start the container
-docker-compose up -d
-
-# Stop the container
 docker-compose down
 ```
 
-### Using Docker directly
+### Dane aplikacji
 
-```sh
-# Build the Docker image
-docker build -t packaging-operations-tracker .
+Wszystkie dane są zapisywane w folderze `./data` w katalogu głównym aplikacji. Pliki są w formacie JSON i mogą być eksportowane do Excela bezpośrednio z aplikacji.
 
-# Run the container
-docker run -p 8080:80 -d --name packaging-ops packaging-operations-tracker
+- `operations.json` - wszystkie operacje produkcyjne
+- `employees.json` - lista pracowników
+- `machines.json` - lista maszyn
+- `projects.json` - lista projektów
 
-# Stop the container
-docker stop packaging-ops
-```
+## Funkcje aplikacji
 
-The application will be available at http://localhost:8080
+- Rejestrowanie operacji produkcyjnych
+- Zarządzanie pracownikami i maszynami
+- Zarządzanie projektami
+- Eksport danych do pliku Excel
+- Automatyczne zapisywanie wszystkich danych
 
-## What technologies are used for this project?
+## Kontakt
 
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-- Docker
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/c9e05a68-8eee-424f-87df-c737a1034989) and click on Share -> Publish.
-
-Alternatively, you can deploy the Docker container to any cloud provider that supports Docker containers.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+W razie pytań lub problemów, skontaktuj się z autorem aplikacji.

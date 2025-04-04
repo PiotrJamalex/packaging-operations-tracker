@@ -2,7 +2,7 @@
 #!/bin/sh
 set -e
 
-# Utwórz katalog danych, jeśli nie istnieje
+# Create data directory if it doesn't exist
 mkdir -p /app/data
 
 # Initialize JSON files if they don't exist
@@ -13,7 +13,7 @@ for file in operations employees machines projects; do
     fi
 done
 
-# Make sure permissions are correct
+# Set permissions
 chmod -R 777 /app/data
 chmod 666 /app/data/*.json
 

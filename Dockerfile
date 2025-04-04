@@ -1,41 +1,40 @@
 
-# Etap budowania
+# Build stage
 FROM node:18-alpine AS build
 
-# Ustawienie katalogu roboczego
+# Set working directory
 WORKDIR /app
 
-# Kopiowanie plików package.json i package-lock.json
+# Copy package files
 COPY package*.json ./
 
-# Instalacja zależności
+# Install dependencies
 RUN npm ci
 
-# Kopiowanie reszty kodu źródłowego
+# Copy source code
 COPY . .
 
-# Budowanie aplikacji
+# Build application
 RUN npm run build
 
-# Etap produkcyjny
-FROM openresty/openresty:alpine
+# Production stage
+FROM nginx:alpine
 
-# Tworzenie katalogów do przechowywania danych
-RUN mkdir -p /app/data && \
-    chmod -R 777 /app/data
+# Create data directory
+RUN mkdir -p /app/data
 
-# Kopiowanie skryptu startowego
+# Copy built files from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Kopiowanie plików z etapu budowania do katalogu serwera Nginx
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Kopiowanie konfiguracji Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Exposing port 80
+# Expose port
 EXPOSE 80
 
-# Uruchomienie skryptu startowego i OpenResty
+# Set entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
