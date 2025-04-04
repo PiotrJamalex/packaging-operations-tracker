@@ -1,6 +1,4 @@
 
-version: '3.8'
-
 services:
   app:
     build:
@@ -13,3 +11,9 @@ services:
       - ./data:/app/data
     environment:
       - NODE_ENV=production
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
