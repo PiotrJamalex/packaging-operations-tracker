@@ -31,7 +31,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Create a proper entrypoint script directly in the Dockerfile
+# Remove any default configuration if it exists
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+# Create a proper entrypoint script
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
@@ -56,7 +59,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'ls -la /app/data' >> /docker-entrypoint.sh && \
     echo 'ls -la /usr/share/nginx/html' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
-    echo '# Start nginx' >> /docker-entrypoint.sh && \
+    echo '# Load the http_lua module before starting nginx' >> /docker-entrypoint.sh && \
     echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \
     echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
@@ -64,9 +67,6 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
 # Set correct permissions
 RUN mkdir -p /app/data && \
     chmod -R 777 /app/data
-
-# Remove default nginx configuration
-RUN rm -f /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80
