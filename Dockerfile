@@ -65,6 +65,9 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
 RUN mkdir -p /app/data && \
     chmod -R 777 /app/data
 
+# Remove default nginx configuration
+RUN rm -f /etc/nginx/conf.d/default.conf
+
 # Expose port
 EXPOSE 80
 
