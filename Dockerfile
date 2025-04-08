@@ -22,8 +22,7 @@ FROM nginx:alpine
 
 # Install required packages for file handling
 RUN apk update && \
-    apk add --no-cache python3 py3-pip && \
-    pip3 install --no-cache-dir flask && \
+    apk add --no-cache python3 py3-flask && \
     mkdir -p /app/data /tmp/nginx/client-body
 
 # Copy built files from build stage
