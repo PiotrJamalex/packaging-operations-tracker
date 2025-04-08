@@ -20,9 +20,10 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Install required packages
+# Install required packages for file handling
 RUN apk update && \
-    apk add --no-cache nginx-mod-http-lua && \
+    apk add --no-cache python3 py3-pip && \
+    pip3 install --no-cache-dir flask && \
     mkdir -p /app/data /tmp/nginx/client-body
 
 # Copy built files from build stage
@@ -30,6 +31,9 @@ COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy file handler script
+COPY file_handler.py /app/file_handler.py
 
 # Remove any default configuration if it exists
 RUN rm -f /etc/nginx/conf.d/default.conf
@@ -59,7 +63,10 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'ls -la /app/data' >> /docker-entrypoint.sh && \
     echo 'ls -la /usr/share/nginx/html' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
-    echo '# Load the http_lua module before starting nginx' >> /docker-entrypoint.sh && \
+    echo '# Start the file handler server in background' >> /docker-entrypoint.sh && \
+    echo 'python3 /app/file_handler.py &' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Start nginx' >> /docker-entrypoint.sh && \
     echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \
     echo 'nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
