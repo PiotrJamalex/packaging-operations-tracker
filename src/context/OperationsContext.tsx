@@ -1,16 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { toast } from "sonner";
-import {
-  fetchOperations,
-  saveOperations,
-  fetchEmployees,
-  saveEmployees,
-  fetchMachines,
-  saveMachines,
-  fetchProjects,
-  saveProjects
-} from '@/services/dataService';
+import { fetchData, saveData } from '@/services/dataService';
 
 export interface Operation {
   id: string;
@@ -92,36 +83,76 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Funkcja do zapisywania wszystkich danych
+  const saveAllData = async () => {
+    if (!initialized) return;
+    
+    try {
+      console.log("Saving all data at once...");
+      const success = await saveData({
+        operations,
+        employees,
+        machines,
+        projects
+      });
+      
+      if (!success) {
+        throw new Error("Failed to save data");
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      toast.error("Błąd podczas zapisywania danych", {
+        description: "Zmiany mogą nie zostać zapisane"
+      });
+    }
+  };
+
+  // Funkcja do opóźnionego zapisu (debounce)
+  const debounceSave = () => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      saveAllData();
+    }, 500); // 500ms delay
+    
+    setSaveTimeout(timeout);
+  };
 
   // Załaduj dane z serwera przy pierwszym renderowaniu
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Załaduj operacje
-        const fetchedOperations = await fetchOperations();
-        setOperations(fetchedOperations);
-
-        // Załaduj pracowników lub użyj domyślnych
-        const fetchedEmployees = await fetchEmployees();
-        setEmployees(fetchedEmployees.length > 0 ? fetchedEmployees : defaultEmployees);
-
-        // Załaduj maszyny lub użyj domyślnych
-        const fetchedMachines = await fetchMachines();
-        setMachines(fetchedMachines.length > 0 ? fetchedMachines : defaultMachines);
-
-        // Załaduj projekty
-        const fetchedProjects = await fetchProjects();
-        setProjects(fetchedProjects);
-
+        // Załaduj wszystkie dane jednocześnie
+        const appData = await fetchData();
+        
+        // Ustaw operacje
+        setOperations(appData.operations || []);
+        
+        // Ustaw pracowników lub użyj domyślnych
+        setEmployees(appData.employees?.length > 0 ? appData.employees : defaultEmployees);
+        
+        // Ustaw maszyny lub użyj domyślnych
+        setMachines(appData.machines?.length > 0 ? appData.machines : defaultMachines);
+        
+        // Ustaw projekty
+        setProjects(appData.projects || []);
+        
         // Jeśli to pierwszy start aplikacji, zapisz domyślne dane
-        if (fetchedEmployees.length === 0) {
-          await saveEmployees(defaultEmployees);
+        if (!appData.employees || appData.employees.length === 0 || 
+            !appData.machines || appData.machines.length === 0) {
+          await saveData({
+            operations: appData.operations || [],
+            employees: appData.employees?.length > 0 ? appData.employees : defaultEmployees,
+            machines: appData.machines?.length > 0 ? appData.machines : defaultMachines,
+            projects: appData.projects || []
+          });
         }
-        if (fetchedMachines.length === 0) {
-          await saveMachines(defaultMachines);
-        }
-
+        
         setInitialized(true);
       } catch (error) {
         console.error("Błąd podczas ładowania danych:", error);
@@ -134,55 +165,21 @@ export const OperationsProvider: React.FC<OperationsProviderProps> = ({ children
     };
 
     loadData();
+    
+    // Cleanup function
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
   }, []);
 
-  // Zapisz operacje do serwera gdy się zmienią
+  // Zapisuj dane gdy się zmienią
   useEffect(() => {
-    if (initialized && operations.length >= 0) {
-      saveOperations(operations).catch(error => {
-        console.error("Błąd podczas zapisywania operacji:", error);
-        toast.error("Błąd podczas zapisywania operacji", {
-          description: "Zmiany mogą nie zostać zapisane"
-        });
-      });
+    if (initialized) {
+      debounceSave();
     }
-  }, [operations, initialized]);
-
-  // Zapisz pracowników do serwera gdy się zmienią
-  useEffect(() => {
-    if (initialized && employees.length > 0) {
-      saveEmployees(employees).catch(error => {
-        console.error("Błąd podczas zapisywania pracowników:", error);
-        toast.error("Błąd podczas zapisywania pracowników", {
-          description: "Zmiany mogą nie zostać zapisane"
-        });
-      });
-    }
-  }, [employees, initialized]);
-
-  // Zapisz maszyny do serwera gdy się zmienią
-  useEffect(() => {
-    if (initialized && machines.length > 0) {
-      saveMachines(machines).catch(error => {
-        console.error("Błąd podczas zapisywania maszyn:", error);
-        toast.error("Błąd podczas zapisywania maszyn", {
-          description: "Zmiany mogą nie zostać zapisane"
-        });
-      });
-    }
-  }, [machines, initialized]);
-
-  // Zapisz projekty do serwera gdy się zmienią
-  useEffect(() => {
-    if (initialized && projects.length >= 0) {
-      saveProjects(projects).catch(error => {
-        console.error("Błąd podczas zapisywania projektów:", error);
-        toast.error("Błąd podczas zapisywania projektów", {
-          description: "Zmiany mogą nie zostać zapisane"
-        });
-      });
-    }
-  }, [projects, initialized]);
+  }, [operations, employees, machines, projects, initialized]);
 
   const addOperation = (operation: Omit<Operation, 'id' | 'createdAt'>) => {
     const newOperation: Operation = {

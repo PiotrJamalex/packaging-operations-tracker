@@ -44,13 +44,11 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo '# Create data directory if it does not exist' >> /docker-entrypoint.sh && \
     echo 'mkdir -p /app/data' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
-    echo '# Initialize JSON files if they do not exist' >> /docker-entrypoint.sh && \
-    echo 'for file in operations employees machines projects; do' >> /docker-entrypoint.sh && \
-    echo '    if [ ! -f "/app/data/$file.json" ]; then' >> /docker-entrypoint.sh && \
-    echo '        echo "Initializing $file.json with empty array"' >> /docker-entrypoint.sh && \
-    echo '        echo "[]" > "/app/data/$file.json"' >> /docker-entrypoint.sh && \
-    echo '    fi' >> /docker-entrypoint.sh && \
-    echo 'done' >> /docker-entrypoint.sh && \
+    echo '# Initialize JSON data file if it does not exist' >> /docker-entrypoint.sh && \
+    echo 'if [ ! -f "/app/data/data.json" ]; then' >> /docker-entrypoint.sh && \
+    echo '    echo "Initializing data.json with empty structure"' >> /docker-entrypoint.sh && \
+    echo '    echo "{\"operations\": [], \"employees\": [], \"machines\": [], \"projects\": []}" > "/app/data/data.json"' >> /docker-entrypoint.sh && \
+    echo 'fi' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Set permissions' >> /docker-entrypoint.sh && \
     echo 'chmod -R 777 /app/data' >> /docker-entrypoint.sh && \

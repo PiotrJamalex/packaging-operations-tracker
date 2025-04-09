@@ -3,11 +3,12 @@
 from flask import Flask, request, jsonify
 import os
 import sys
+import json
 
 app = Flask(__name__)
 
-@app.route('/save_file', methods=['POST'])
-def save_file():
+@app.route('/save_data', methods=['POST'])
+def save_data():
     # Get the target file path from the header
     file_path = request.headers.get('X-File-Path')
     
@@ -21,26 +22,20 @@ def save_file():
     os.makedirs(dir_path, exist_ok=True)
     
     try:
-        # Write the request content to the file
-        with open(file_path, 'wb') as f:
-            f.write(request.data)
+        # Parse the JSON data
+        data = request.get_json()
         
+        if data is None:
+            return jsonify({"error": "Invalid JSON data"}), 400
+            
+        # Write the updated data to the file
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        print(f"Data successfully saved to {file_path}", file=sys.stderr)
         return jsonify({"success": True}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/save_operations', methods=['POST'])
-def save_operations():
-    # Specific endpoint for operations
-    file_path = request.headers.get('X-File-Path', '/app/data/operations.json')
-    
-    try:
-        # Write the request content to the file
-        with open(file_path, 'wb') as f:
-            f.write(request.data)
-        
-        return jsonify({"success": True}), 200
-    except Exception as e:
+        print(f"Error saving data: {str(e)}", file=sys.stderr)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
