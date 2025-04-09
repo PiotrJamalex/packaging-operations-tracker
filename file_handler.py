@@ -40,6 +40,10 @@ def save_data():
         print(f"Error saving data: {str(e)}", file=sys.stderr)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
 if __name__ == '__main__':
     print("Starting file handler server on http://127.0.0.1:8000", file=sys.stderr)
-    app.run(host='127.0.0.1', port=8000)
+    app.run(host='127.0.0.1', port=8000, debug=True)

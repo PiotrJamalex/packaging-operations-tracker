@@ -37,7 +37,8 @@ export const fetchData = async (): Promise<AppData> => {
       headers: {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
-      }
+      },
+      method: 'GET'
     });
     
     if (!response.ok) {
