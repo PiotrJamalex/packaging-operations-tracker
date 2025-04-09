@@ -28,6 +28,8 @@ def save_data():
         if data is None:
             return jsonify({"error": "Invalid JSON data"}), 400
             
+        print(f"Saving data to {file_path}: {str(data)[:100]}...", file=sys.stderr)
+        
         # Write the updated data to the file
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2)

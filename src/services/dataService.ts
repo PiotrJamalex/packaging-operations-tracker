@@ -33,38 +33,39 @@ const parseDates = (operations: any[]): Operation[] => {
 export const fetchData = async (): Promise<AppData> => {
   try {
     console.log('Fetching all data from API...');
-    const response = await fetch(`${API_URL}/data`);
+    const response = await fetch(`${API_URL}/data`, {
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
+    });
     
     if (!response.ok) {
+      console.error(`HTTP error ${response.status}`);
       throw new Error(`HTTP error ${response.status}`);
     }
     
-    const text = await response.text();
-    
-    // Obsługa pustej odpowiedzi
-    if (!text.trim()) {
-      console.log('Empty response, using initial data structure');
-      return dataCache;
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error(`Unexpected content type: ${contentType}`);
+      const responseText = await response.text();
+      console.error(`Response text: ${responseText.substring(0, 200)}...`);
+      throw new Error('Response is not JSON');
     }
     
-    try {
-      const data = JSON.parse(text);
-      console.log('Data received:', data);
+    const data = await response.json();
+    console.log('Data received:', data);
       
-      // Upewnij się, że dane mają prawidłową strukturę
-      const validatedData: AppData = {
-        operations: Array.isArray(data.operations) ? parseDates(data.operations) : [],
-        employees: Array.isArray(data.employees) ? data.employees : [],
-        machines: Array.isArray(data.machines) ? data.machines : [],
-        projects: Array.isArray(data.projects) ? data.projects : []
-      };
+    // Upewnij się, że dane mają prawidłową strukturę
+    const validatedData: AppData = {
+      operations: Array.isArray(data.operations) ? parseDates(data.operations) : [],
+      employees: Array.isArray(data.employees) ? data.employees : [],
+      machines: Array.isArray(data.machines) ? data.machines : [],
+      projects: Array.isArray(data.projects) ? data.projects : []
+    };
       
-      dataCache = validatedData;
-      return validatedData;
-    } catch (parseError) {
-      console.error('Error parsing JSON:', parseError);
-      return dataCache;
-    }
+    dataCache = validatedData;
+    return validatedData;
   } catch (error) {
     console.error('Error fetching data:', error);
     return dataCache;
@@ -82,6 +83,9 @@ export const saveData = async (data: AppData): Promise<boolean> => {
     });
     
     if (!response.ok) {
+      console.error(`HTTP error ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Error details: ${errorText}`);
       throw new Error(`HTTP error ${response.status}`);
     }
     

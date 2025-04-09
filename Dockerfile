@@ -52,12 +52,13 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Set permissions' >> /docker-entrypoint.sh && \
     echo 'chmod -R 777 /app/data' >> /docker-entrypoint.sh && \
-    echo 'chmod 666 /app/data/*.json' >> /docker-entrypoint.sh && \
+    echo 'chmod 666 /app/data/data.json' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Debug information' >> /docker-entrypoint.sh && \
     echo 'echo "Directory structure:"' >> /docker-entrypoint.sh && \
     echo 'ls -la /app' >> /docker-entrypoint.sh && \
     echo 'ls -la /app/data' >> /docker-entrypoint.sh && \
+    echo 'cat /app/data/data.json' >> /docker-entrypoint.sh && \
     echo 'ls -la /usr/share/nginx/html' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Start the file handler server in background' >> /docker-entrypoint.sh && \
