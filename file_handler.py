@@ -46,12 +46,18 @@ def ensure_data_file(file_path):
         # Set permissions to ensure it's writable
         os.chmod(file_path, 0o666)
         os.chmod(dir_path, 0o777)
+        
+        print(f"Data file ready at {file_path}", file=sys.stderr)
     except Exception as e:
         print(f"Error ensuring data file: {str(e)}", file=sys.stderr)
 
 # Get data from file
 def get_data_from_file(file_path):
     try:
+        if not os.path.exists(file_path):
+            # If file doesn't exist, create it with initial data
+            ensure_data_file(file_path)
+            
         with open(file_path, 'r') as f:
             return json.load(f)
     except Exception as e:
@@ -62,6 +68,10 @@ def get_data_from_file(file_path):
 # Save data to file
 def save_data_to_file(file_path, data):
     try:
+        # Ensure directory exists
+        dir_path = os.path.dirname(file_path)
+        os.makedirs(dir_path, exist_ok=True)
+        
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2)
         return True
@@ -110,4 +120,4 @@ if __name__ == '__main__':
     print("Starting file handler server on http://127.0.0.1:8000", file=sys.stderr)
     # Ensure data directory and file exist on startup
     ensure_data_file(DEFAULT_DATA_PATH)
-    app.run(host='127.0.0.1', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=True)

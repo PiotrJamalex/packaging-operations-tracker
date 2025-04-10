@@ -42,9 +42,16 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -e' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
-    echo '# Create data directory' >> /docker-entrypoint.sh && \
+    echo '# Create data directory with proper permissions' >> /docker-entrypoint.sh && \
     echo 'mkdir -p /app/data' >> /docker-entrypoint.sh && \
-    echo 'chmod -R 777 /app/data' >> /docker-entrypoint.sh && \
+    echo 'touch /app/data/data.json' >> /docker-entrypoint.sh && \
+    echo 'chmod -R 777 /app' >> /docker-entrypoint.sh && \
+    echo 'chmod 666 /app/data/data.json' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Initialize data file with default content if empty' >> /docker-entrypoint.sh && \
+    echo 'if [ ! -s /app/data/data.json ]; then' >> /docker-entrypoint.sh && \
+    echo '  echo "{\\"operations\\":[],\\"employees\\":[{\\"id\\":\\"aneta\\",\\"name\\":\\"Aneta\\"},{\\"id\\":\\"ewa\\",\\"name\\":\\"Ewa\\"},{\\"id\\":\\"adam\\",\\"name\\":\\"Adam\\"},{\\"id\\":\\"piotr\\",\\"name\\":\\"Piotr\\"}],\\"machines\\":[{\\"id\\":\\"drukarka\\",\\"name\\":\\"Drukarka\\",\\"icon\\":\\"printer\\"},{\\"id\\":\\"autobox\\",\\"name\\":\\"Autobox\\",\\"icon\\":\\"package\\"},{\\"id\\":\\"bigówka\\",\\"name\\":\\"Bigówka\\",\\"icon\\":\\"scissors\\"}],\\"projects\\":[]}" > /app/data/data.json' >> /docker-entrypoint.sh && \
+    echo 'fi' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Start the file handler server in background' >> /docker-entrypoint.sh && \
     echo 'echo "Starting file handler server..."' >> /docker-entrypoint.sh && \
@@ -58,7 +65,9 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
 
 # Set correct permissions
 RUN mkdir -p /app/data && \
-    chmod -R 777 /app/data
+    touch /app/data/data.json && \
+    chmod -R 777 /app && \
+    chmod 666 /app/data/data.json
 
 # Expose port
 EXPOSE 80

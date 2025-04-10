@@ -42,6 +42,7 @@ export const fetchData = async (): Promise<AppData> => {
     });
     
     if (!response.ok) {
+      console.error(`API Error: Status ${response.status}`);
       throw new Error(`HTTP error ${response.status}`);
     }
     
@@ -61,6 +62,26 @@ export const fetchData = async (): Promise<AppData> => {
     return validatedData;
   } catch (error) {
     console.error('Error fetching data:', error);
+    
+    // If cache is empty, use default data
+    if (dataCache.employees.length === 0) {
+      dataCache = {
+        operations: [],
+        employees: [
+          { id: "aneta", name: "Aneta" },
+          { id: "ewa", name: "Ewa" },
+          { id: "adam", name: "Adam" },
+          { id: "piotr", name: "Piotr" }
+        ],
+        machines: [
+          { id: "drukarka", name: "Drukarka", icon: "printer" },
+          { id: "autobox", name: "Autobox", icon: "package" },
+          { id: "bigówka", name: "Bigówka", icon: "scissors" }
+        ],
+        projects: []
+      };
+    }
+    
     // Return cached data on error
     return dataCache;
   }
@@ -80,6 +101,7 @@ export const saveData = async (data: AppData): Promise<boolean> => {
     });
     
     if (!response.ok) {
+      console.error(`API Error: Status ${response.status}`);
       throw new Error(`HTTP error ${response.status}`);
     }
     
