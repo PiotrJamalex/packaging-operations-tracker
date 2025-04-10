@@ -3,7 +3,7 @@ import { Operation, Employee, Machine, Project } from '@/context/OperationsConte
 
 const API_URL = '/api';
 
-// Struktura całej aplikacji
+// Application data structure
 interface AppData {
   operations: Operation[];
   employees: Employee[];
@@ -11,7 +11,7 @@ interface AppData {
   projects: Project[];
 }
 
-// Lokalna pamięć podręczna
+// Local cache
 let dataCache: AppData = {
   operations: [],
   employees: [],
@@ -19,7 +19,7 @@ let dataCache: AppData = {
   projects: []
 };
 
-// Konwersja dat w operacjach
+// Convert dates in operations
 const parseDates = (operations: any[]): Operation[] => {
   return operations.map(op => ({
     ...op,
@@ -29,7 +29,7 @@ const parseDates = (operations: any[]): Operation[] => {
   }));
 };
 
-// Funkcja do pobierania wszystkich danych
+// Function to fetch all data
 export const fetchData = async (): Promise<AppData> => {
   try {
     console.log('Fetching all data from API...');
@@ -57,7 +57,7 @@ export const fetchData = async (): Promise<AppData> => {
     const data = await response.json();
     console.log('Data received:', data);
       
-    // Upewnij się, że dane mają prawidłową strukturę
+    // Validate data structure
     const validatedData: AppData = {
       operations: Array.isArray(data.operations) ? parseDates(data.operations) : [],
       employees: Array.isArray(data.employees) ? data.employees : [],
@@ -69,17 +69,23 @@ export const fetchData = async (): Promise<AppData> => {
     return validatedData;
   } catch (error) {
     console.error('Error fetching data:', error);
+    
+    // If there's an error, return the most recent cache
+    // but don't overwrite any cached data that might exist
     return dataCache;
   }
 };
 
-// Funkcja do zapisywania wszystkich danych
+// Function to save all data
 export const saveData = async (data: AppData): Promise<boolean> => {
   try {
     console.log('Saving all data to API...', data);
     const response = await fetch(`${API_URL}/data`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
       body: JSON.stringify(data)
     });
     
@@ -99,7 +105,7 @@ export const saveData = async (data: AppData): Promise<boolean> => {
   }
 };
 
-// Dotychczasowe funkcje dla kompatybilności
+// Legacy functions for compatibility
 export const fetchOperations = async (): Promise<Operation[]> => {
   const data = await fetchData();
   return data.operations;

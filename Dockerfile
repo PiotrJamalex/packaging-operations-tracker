@@ -23,6 +23,7 @@ FROM nginx:alpine
 # Install required packages for file handling
 RUN apk update && \
     apk add --no-cache python3 py3-flask py3-pip && \
+    pip install flask-cors && \
     mkdir -p /app/data /tmp/nginx/client-body
 
 # Copy built files from build stage
@@ -65,7 +66,8 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo '# Start the file handler server in background' >> /docker-entrypoint.sh && \
     echo 'echo "Starting file handler server..."' >> /docker-entrypoint.sh && \
     echo 'python3 /app/file_handler.py > /var/log/file_handler.log 2>&1 &' >> /docker-entrypoint.sh && \
-    echo 'sleep 2' >> /docker-entrypoint.sh && \
+    echo 'echo "Waiting for file handler server to start..."' >> /docker-entrypoint.sh && \
+    echo 'sleep 5' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Start nginx' >> /docker-entrypoint.sh && \
     echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \
