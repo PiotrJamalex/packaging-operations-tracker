@@ -44,12 +44,17 @@ def ensure_data_file(file_path):
             print(f"Created new data file at {file_path}", file=sys.stderr)
             
         # Set permissions to ensure it's writable
-        os.chmod(file_path, 0o666)
-        os.chmod(dir_path, 0o777)
+        try:
+            os.chmod(file_path, 0o666)
+            os.chmod(dir_path, 0o777)
+        except Exception as e:
+            print(f"Warning: Could not set permissions: {str(e)}", file=sys.stderr)
         
         print(f"Data file ready at {file_path}", file=sys.stderr)
+        return True
     except Exception as e:
         print(f"Error ensuring data file: {str(e)}", file=sys.stderr)
+        return False
 
 # Get data from file
 def get_data_from_file(file_path):
@@ -59,7 +64,9 @@ def get_data_from_file(file_path):
             ensure_data_file(file_path)
             
         with open(file_path, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            print(f"Successfully read data from {file_path}", file=sys.stderr)
+            return data
     except Exception as e:
         print(f"Error reading data file: {str(e)}", file=sys.stderr)
         # Return initial data if file can't be read
@@ -74,6 +81,7 @@ def save_data_to_file(file_path, data):
         
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2)
+        print(f"Successfully saved data to {file_path}", file=sys.stderr)
         return True
     except Exception as e:
         print(f"Error saving data: {str(e)}", file=sys.stderr)
@@ -88,9 +96,13 @@ def handle_data():
     ensure_data_file(file_path)
     
     if request.method == 'GET':
-        data = get_data_from_file(file_path)
-        print(f"Sending data from {file_path}", file=sys.stderr)
-        return jsonify(data)
+        try:
+            data = get_data_from_file(file_path)
+            print(f"Sending data from {file_path}", file=sys.stderr)
+            return jsonify(data)
+        except Exception as e:
+            print(f"Error processing GET request: {str(e)}", file=sys.stderr)
+            return jsonify({"error": str(e)}), 500
     
     elif request.method == 'POST':
         try:
@@ -109,8 +121,11 @@ def handle_data():
                 return jsonify({"error": "Failed to save data"}), 500
                 
         except Exception as e:
-            print(f"Error processing request: {str(e)}", file=sys.stderr)
+            print(f"Error processing POST request: {str(e)}", file=sys.stderr)
             return jsonify({"error": str(e)}), 500
+    
+    # Handle OPTIONS and other methods
+    return jsonify({"message": "Method not allowed"}), 405
 
 @app.route('/health', methods=['GET'])
 def health_check():

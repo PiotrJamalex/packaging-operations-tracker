@@ -46,6 +46,12 @@ export const fetchData = async (): Promise<AppData> => {
       throw new Error(`HTTP error ${response.status}`);
     }
     
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Invalid content type, expected JSON but got:', contentType);
+      throw new Error('Invalid content type, expected JSON');
+    }
+    
     const data = await response.json();
     console.log('Data received:', data);
     
@@ -103,6 +109,18 @@ export const saveData = async (data: AppData): Promise<boolean> => {
     if (!response.ok) {
       console.error(`API Error: Status ${response.status}`);
       throw new Error(`HTTP error ${response.status}`);
+    }
+    
+    // Check for proper JSON response
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Invalid content type, expected JSON but got:', contentType);
+      throw new Error('Invalid content type, expected JSON');
+    }
+    
+    const responseData = await response.json();
+    if (!responseData.success) {
+      throw new Error('Server returned error: ' + (responseData.error || 'Unknown error'));
     }
     
     console.log('Data saved successfully');
