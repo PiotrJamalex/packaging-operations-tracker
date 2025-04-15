@@ -25,7 +25,7 @@ RUN apk update && \
     apk add --no-cache python3 py3-flask py3-pip && \
     pip install flask-cors && \
     mkdir -p /app/data /tmp/nginx/client-body && \
-    chmod 777 /app/data /tmp/nginx/client-body
+    chmod -R 777 /app/data /tmp/nginx/client-body
 
 # Copy built files from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -58,11 +58,15 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo '# Start the file handler server in background' >> /docker-entrypoint.sh && \
     echo 'echo "Starting file handler server..."' >> /docker-entrypoint.sh && \
     echo 'python3 /app/file_handler.py > /var/log/file_handler.log 2>&1 &' >> /docker-entrypoint.sh && \
-    echo 'sleep 2' >> /docker-entrypoint.sh && \
+    echo 'sleep 3' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Log the file handler startup' >> /docker-entrypoint.sh && \
     echo 'echo "File handler started, checking health..."' >> /docker-entrypoint.sh && \
     echo 'curl -s http://127.0.0.1:8000/health || echo "Warning: File handler health check failed"' >> /docker-entrypoint.sh && \
+    echo '' >> /docker-entrypoint.sh && \
+    echo '# Log nginx configuration for debugging' >> /docker-entrypoint.sh && \
+    echo 'echo "Testing nginx configuration..."' >> /docker-entrypoint.sh && \
+    echo 'nginx -t' >> /docker-entrypoint.sh && \
     echo '' >> /docker-entrypoint.sh && \
     echo '# Start nginx' >> /docker-entrypoint.sh && \
     echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \

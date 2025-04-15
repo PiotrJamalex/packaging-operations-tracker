@@ -4,7 +4,17 @@ from flask import Flask, request, jsonify, Response
 import os
 import sys
 import json
+import traceback
 from flask_cors import CORS
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stderr)]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -14,6 +24,7 @@ DEFAULT_DATA_PATH = "/app/data/data.json"
 
 # Initialize empty data structure
 def get_initial_data():
+    logger.info("Generating initial data structure")
     return {
         "operations": [],
         "employees": [
@@ -30,67 +41,137 @@ def get_initial_data():
         "projects": []
     }
 
-# Ensure data file exists
-def ensure_data_file(file_path):
+# Ensure data directory is writable
+def ensure_data_directory(dir_path):
     try:
-        dir_path = os.path.dirname(file_path)
         # Create directory if it doesn't exist
         os.makedirs(dir_path, exist_ok=True)
         
+        # Check if directory is writable
+        test_file = os.path.join(dir_path, ".test_write")
+        try:
+            with open(test_file, 'w') as f:
+                f.write("test")
+            os.remove(test_file)
+            logger.info(f"Directory {dir_path} is writable")
+            return True
+        except Exception as e:
+            logger.error(f"Directory {dir_path} is not writable: {str(e)}")
+            return False
+    except Exception as e:
+        logger.error(f"Error checking directory {dir_path}: {str(e)}")
+        return False
+
+# Ensure data file exists and is writable
+def ensure_data_file(file_path):
+    try:
+        dir_path = os.path.dirname(file_path)
+        
+        # Ensure directory exists and is writable
+        if not ensure_data_directory(dir_path):
+            logger.error(f"Cannot proceed: directory {dir_path} not writable")
+            return False
+        
+        # Log file path and status
+        logger.info(f"Checking data file: {file_path}")
+        logger.info(f"File exists: {os.path.exists(file_path)}")
+        
         # Create file with initial data if it doesn't exist
         if not os.path.exists(file_path):
-            with open(file_path, 'w') as f:
-                json.dump(get_initial_data(), f, indent=2)
-            print(f"Created new data file at {file_path}", file=sys.stderr)
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(get_initial_data(), f, indent=2)
+                logger.info(f"Created new data file at {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to create data file: {str(e)}")
+                return False
             
         # Set permissions to ensure it's writable
         try:
             os.chmod(file_path, 0o666)
-            os.chmod(dir_path, 0o777)
+            logger.info(f"Set permissions on {file_path}")
         except Exception as e:
-            print(f"Warning: Could not set permissions: {str(e)}", file=sys.stderr)
+            logger.warning(f"Could not set permissions on {file_path}: {str(e)}")
         
-        print(f"Data file ready at {file_path}", file=sys.stderr)
-        return True
+        # Test if file is readable
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                logger.info(f"Successfully read data file with {len(data.get('operations', []))} operations")
+            return True
+        except Exception as e:
+            logger.error(f"Error reading data file: {str(e)}")
+            return False
     except Exception as e:
-        print(f"Error ensuring data file: {str(e)}", file=sys.stderr)
+        logger.error(f"Error ensuring data file: {str(e)}")
+        traceback.print_exc(file=sys.stderr)
         return False
 
-# Get data from file
+# Get data from file with fallback to initial data
 def get_data_from_file(file_path):
     try:
+        # If file doesn't exist, create it
         if not os.path.exists(file_path):
-            # If file doesn't exist, create it with initial data
             ensure_data_file(file_path)
             
         with open(file_path, 'r') as f:
             data = json.load(f)
-            print(f"Successfully read data from {file_path}", file=sys.stderr)
+            logger.info(f"Read {len(data.get('operations', []))} operations from {file_path}")
             return data
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in {file_path}: {str(e)}")
+        # If JSON is invalid, return initial data
+        return get_initial_data()
     except Exception as e:
-        print(f"Error reading data file: {str(e)}", file=sys.stderr)
+        logger.error(f"Error reading data file: {str(e)}")
+        traceback.print_exc(file=sys.stderr)
         # Return initial data if file can't be read
         return get_initial_data()
 
-# Save data to file
+# Save data to file with backup
 def save_data_to_file(file_path, data):
     try:
         # Ensure directory exists
         dir_path = os.path.dirname(file_path)
         os.makedirs(dir_path, exist_ok=True)
         
+        # Create backup of current file if it exists
+        if os.path.exists(file_path):
+            backup_path = f"{file_path}.bak"
+            try:
+                with open(file_path, 'r') as src, open(backup_path, 'w') as dst:
+                    dst.write(src.read())
+                logger.info(f"Created backup at {backup_path}")
+            except Exception as e:
+                logger.warning(f"Failed to create backup: {str(e)}")
+        
+        # Write new data
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=2)
-        print(f"Successfully saved data to {file_path}", file=sys.stderr)
-        return True
+        
+        # Verify data was written correctly
+        try:
+            with open(file_path, 'r') as f:
+                _ = json.load(f)
+            logger.info(f"Successfully saved and verified data file {file_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Data verification failed after save: {str(e)}")
+            return False
     except Exception as e:
-        print(f"Error saving data: {str(e)}", file=sys.stderr)
+        logger.error(f"Error saving data: {str(e)}")
+        traceback.print_exc(file=sys.stderr)
         return False
 
 @app.route('/data', methods=['GET', 'POST', 'OPTIONS'])
 def handle_data():
+    # Log all incoming requests
+    logger.info(f"Received {request.method} request to /data")
+    logger.info(f"Headers: {request.headers}")
+    
     # For OPTIONS requests, return CORS headers immediately
     if request.method == 'OPTIONS':
+        logger.info("Handling OPTIONS request")
         resp = app.make_default_options_response()
         resp.headers['Access-Control-Allow-Origin'] = '*'
         resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -99,33 +180,45 @@ def handle_data():
     
     # Get file path from header or use default
     file_path = request.headers.get('X-File-Path', DEFAULT_DATA_PATH)
+    logger.info(f"Using data file: {file_path}")
     
     # Ensure data file exists
-    ensure_data_file(file_path)
+    if not ensure_data_file(file_path):
+        error_resp = {"error": f"Could not ensure data file exists: {file_path}"}
+        return Response(json.dumps(error_resp), status=500, mimetype='application/json')
     
     if request.method == 'GET':
         try:
             data = get_data_from_file(file_path)
-            print(f"Sending data from {file_path}", file=sys.stderr)
+            logger.info(f"Sending {len(data.get('operations', []))} operations from {file_path}")
             # Ensure we always return JSON
             resp = Response(json.dumps(data), mimetype='application/json')
             resp.headers['Content-Type'] = 'application/json'
             return resp
         except Exception as e:
-            print(f"Error processing GET request: {str(e)}", file=sys.stderr)
+            logger.error(f"Error processing GET request: {str(e)}")
+            traceback.print_exc(file=sys.stderr)
             error_resp = {"error": str(e)}
             return Response(json.dumps(error_resp), status=500, mimetype='application/json')
     
     elif request.method == 'POST':
         try:
             # Parse the JSON data from request
-            data = request.get_json()
+            logger.info(f"Received POST data: {request.data[:100]}...")
+            
+            try:
+                data = request.get_json()
+            except Exception as e:
+                logger.error(f"Failed to parse JSON: {str(e)}")
+                logger.info(f"Raw data: {request.data}")
+                error_resp = {"error": f"Invalid JSON data: {str(e)}"}
+                return Response(json.dumps(error_resp), status=400, mimetype='application/json')
             
             if data is None:
-                error_resp = {"error": "Invalid JSON data"}
+                error_resp = {"error": "Invalid JSON data or missing request body"}
                 return Response(json.dumps(error_resp), status=400, mimetype='application/json')
-                
-            print(f"Saving data to {file_path}", file=sys.stderr)
+            
+            logger.info(f"Saving data with {len(data.get('operations', []))} operations to {file_path}")
             
             # Write the data to file
             if save_data_to_file(file_path, data):
@@ -136,7 +229,8 @@ def handle_data():
                 return Response(json.dumps(error_resp), status=500, mimetype='application/json')
                 
         except Exception as e:
-            print(f"Error processing POST request: {str(e)}", file=sys.stderr)
+            logger.error(f"Error processing POST request: {str(e)}")
+            traceback.print_exc(file=sys.stderr)
             error_resp = {"error": str(e)}
             return Response(json.dumps(error_resp), status=500, mimetype='application/json')
     
@@ -146,10 +240,31 @@ def handle_data():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy"}), 200
+    try:
+        # Check data file access
+        file_path = DEFAULT_DATA_PATH
+        file_accessible = ensure_data_file(file_path)
+        
+        response_data = {
+            "status": "healthy" if file_accessible else "unhealthy",
+            "file_path": file_path,
+            "file_accessible": file_accessible
+        }
+        
+        status_code = 200 if file_accessible else 500
+        return jsonify(response_data), status_code
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Starting file handler server on http://127.0.0.1:8000", file=sys.stderr)
+    logger.info("Starting file handler server on http://127.0.0.1:8000")
+    
     # Ensure data directory and file exist on startup
-    ensure_data_file(DEFAULT_DATA_PATH)
+    file_path = DEFAULT_DATA_PATH
+    if ensure_data_file(file_path):
+        logger.info(f"Data file ready at {file_path}")
+    else:
+        logger.critical(f"Failed to ensure data file {file_path}")
+    
     app.run(host='0.0.0.0', port=8000, debug=True)
