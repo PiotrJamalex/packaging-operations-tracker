@@ -56,8 +56,7 @@ export const fetchData = async (retryCount = 3): Promise<AppData> => {
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache'
-        },
-        credentials: 'same-origin' // Include cookies if any
+        }
       });
       
       debugLog(`API response status: ${response.status}`);
@@ -170,7 +169,6 @@ export const saveData = async (data: AppData, retryCount = 3): Promise<boolean> 
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache'
         },
-        credentials: 'same-origin', // Include cookies if any
         body: JSON.stringify(dataCopy)
       });
       

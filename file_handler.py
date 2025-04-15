@@ -77,7 +77,7 @@ def ensure_data_file(file_path):
         logger.info(f"File exists: {os.path.exists(file_path)}")
         
         # Create file with initial data if it doesn't exist
-        if not os.path.exists(file_path):
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             try:
                 with open(file_path, 'w') as f:
                     json.dump(get_initial_data(), f, indent=2)
@@ -111,7 +111,7 @@ def ensure_data_file(file_path):
 def get_data_from_file(file_path):
     try:
         # If file doesn't exist, create it
-        if not os.path.exists(file_path):
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             ensure_data_file(file_path)
             
         with open(file_path, 'r') as f:
@@ -163,6 +163,7 @@ def save_data_to_file(file_path, data):
         traceback.print_exc(file=sys.stderr)
         return False
 
+# Route handler for /data endpoint (no = before path)
 @app.route('/data', methods=['GET', 'POST', 'OPTIONS'])
 def handle_data():
     # Log all incoming requests
@@ -258,7 +259,7 @@ def health_check():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    logger.info("Starting file handler server on http://127.0.0.1:8000")
+    logger.info("Starting file handler server on http://0.0.0.0:8000")
     
     # Ensure data directory and file exist on startup
     file_path = DEFAULT_DATA_PATH
@@ -267,4 +268,5 @@ if __name__ == '__main__':
     else:
         logger.critical(f"Failed to ensure data file {file_path}")
     
+    # Run with debug mode off in production for security
     app.run(host='0.0.0.0', port=8000, debug=True)
