@@ -1,6 +1,6 @@
 
 #!/usr/bin/env python3
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import os
 import sys
 import json
@@ -87,8 +87,16 @@ def save_data_to_file(file_path, data):
         print(f"Error saving data: {str(e)}", file=sys.stderr)
         return False
 
-@app.route('/data', methods=['GET', 'POST'])
+@app.route('/data', methods=['GET', 'POST', 'OPTIONS'])
 def handle_data():
+    # For OPTIONS requests, return CORS headers immediately
+    if request.method == 'OPTIONS':
+        resp = app.make_default_options_response()
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-File-Path'
+        return resp
+    
     # Get file path from header or use default
     file_path = request.headers.get('X-File-Path', DEFAULT_DATA_PATH)
     
@@ -99,10 +107,14 @@ def handle_data():
         try:
             data = get_data_from_file(file_path)
             print(f"Sending data from {file_path}", file=sys.stderr)
-            return jsonify(data)
+            # Ensure we always return JSON
+            resp = Response(json.dumps(data), mimetype='application/json')
+            resp.headers['Content-Type'] = 'application/json'
+            return resp
         except Exception as e:
             print(f"Error processing GET request: {str(e)}", file=sys.stderr)
-            return jsonify({"error": str(e)}), 500
+            error_resp = {"error": str(e)}
+            return Response(json.dumps(error_resp), status=500, mimetype='application/json')
     
     elif request.method == 'POST':
         try:
@@ -110,22 +122,27 @@ def handle_data():
             data = request.get_json()
             
             if data is None:
-                return jsonify({"error": "Invalid JSON data"}), 400
+                error_resp = {"error": "Invalid JSON data"}
+                return Response(json.dumps(error_resp), status=400, mimetype='application/json')
                 
             print(f"Saving data to {file_path}", file=sys.stderr)
             
             # Write the data to file
             if save_data_to_file(file_path, data):
-                return jsonify({"success": True})
+                success_resp = {"success": True}
+                return Response(json.dumps(success_resp), mimetype='application/json')
             else:
-                return jsonify({"error": "Failed to save data"}), 500
+                error_resp = {"error": "Failed to save data"}
+                return Response(json.dumps(error_resp), status=500, mimetype='application/json')
                 
         except Exception as e:
             print(f"Error processing POST request: {str(e)}", file=sys.stderr)
-            return jsonify({"error": str(e)}), 500
+            error_resp = {"error": str(e)}
+            return Response(json.dumps(error_resp), status=500, mimetype='application/json')
     
-    # Handle OPTIONS and other methods
-    return jsonify({"message": "Method not allowed"}), 405
+    # Handle other methods
+    error_resp = {"message": "Method not allowed"}
+    return Response(json.dumps(error_resp), status=405, mimetype='application/json')
 
 @app.route('/health', methods=['GET'])
 def health_check():
